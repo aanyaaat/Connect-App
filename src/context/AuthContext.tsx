@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  startWithDisplayName: (name: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -16,59 +17,143 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | null>(null);
 
+const DEVICE_ID_KEY = 'aanya_device_id';
+const DISPLAY_NAME_KEY = 'aanya_saved_display_name';
+
+function getOrCreateDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (uid: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', uid)
-      .maybeSingle();
-    if (error) return;
-    if (!data) {
-      const { data: created } = await supabase
+  const loadProfile = useCallback(async (uid: string, fallbackName?: string) => {
+    try {
+      const { data, error } = await supabase
         .from('profiles')
-        .insert({ id: uid })
         .select('*')
+        .eq('id', uid)
         .maybeSingle();
-      if (created) setProfile(created as Profile);
-    } else {
-      setProfile(data as Profile);
+
+      if (error) {
+        console.warn('Profile fetch warning:', error.message);
+      }
+
+      if (!data) {
+        const savedName = fallbackName || localStorage.getItem(DISPLAY_NAME_KEY) || 'You';
+        const { data: created } = await supabase
+          .from('profiles')
+          .upsert({ id: uid, display_name: savedName })
+          .select('*')
+          .maybeSingle();
+        if (created) setProfile(created as Profile);
+      } else {
+        setProfile(data as Profile);
+      }
+    } catch (e) {
+      console.warn('loadProfile error:', e);
     }
   }, []);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+  const initSession = useCallback(async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
       if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
+        setSession(data.session);
+        setUser(data.session.user);
+        await loadProfile(data.session.user.id);
       } else {
-        setLoading(false);
+        // Check if device already has a saved account
+        const devId = localStorage.getItem(DEVICE_ID_KEY);
+        const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
+        if (devId && savedName) {
+          const email = `device_${devId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}@aanya.app`;
+          const password = `pass_${devId.slice(0, 18)}`;
+          const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInData.user) {
+            setSession(signInData.session);
+            setUser(signInData.user);
+            await loadProfile(signInData.user.id, savedName);
+          }
+        }
       }
-    });
+    } catch (e) {
+      console.warn('Auth init warning:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadProfile]);
+
+  useEffect(() => {
+    initSession();
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
-      (async () => {
-        setSession(sess);
-        setUser(sess?.user ?? null);
-        if (sess?.user) {
-          await loadProfile(sess.user.id);
-        } else {
-          setProfile(null);
-        }
-        if (event === 'SIGNED_OUT') {
-          setProfile(null);
-        }
-        setLoading(false);
-      })();
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        loadProfile(sess.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
+  }, [initSession, loadProfile]);
+
+  // Instant 1-tap frictionless sign-in with display name (No email confirmation needed!)
+  const startWithDisplayName = useCallback<AuthState['startWithDisplayName']>(async (name) => {
+    const trimmed = name.trim() || 'You';
+    localStorage.setItem(DISPLAY_NAME_KEY, trimmed);
+    const devId = getOrCreateDeviceId();
+    const email = `device_${devId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}@aanya.app`;
+    const password = `pass_${devId.slice(0, 18)}`;
+
+    // Try signing in first
+    let userObj: User | null = null;
+    let sessionObj: Session | null = null;
+
+    const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInErr || !signInRes.user) {
+      // If not exists, sign up immediately
+      const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name: trimmed },
+        },
+      });
+
+      if (signUpErr) {
+        return { error: signUpErr.message };
+      }
+      userObj = signUpRes.user;
+      sessionObj = signUpRes.session;
+    } else {
+      userObj = signInRes.user;
+      sessionObj = signInRes.session;
+    }
+
+    if (userObj) {
+      setUser(userObj);
+      setSession(sessionObj);
+      await supabase.from('profiles').upsert({
+        id: userObj.id,
+        display_name: trimmed,
+      });
+      await loadProfile(userObj.id, trimmed);
+    }
+
+    return { error: null };
   }, [loadProfile]);
 
   const signUp = useCallback<AuthState['signUp']>(async (email, password, name) => {
@@ -90,6 +175,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem(DISPLAY_NAME_KEY);
+    localStorage.removeItem('aanya_onboarded');
+    localStorage.removeItem('aanya_skipped_pair');
     setProfile(null);
     setUser(null);
     setSession(null);
@@ -111,8 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthState>(
-    () => ({ user, session, profile, loading, signUp, signIn, signOut, refreshProfile, updateProfile }),
-    [user, session, profile, loading, signUp, signIn, signOut, refreshProfile, updateProfile],
+    () => ({ user, session, profile, loading, startWithDisplayName, signUp, signIn, signOut, refreshProfile, updateProfile }),
+    [user, session, profile, loading, startWithDisplayName, signUp, signIn, signOut, refreshProfile, updateProfile],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -4,19 +4,29 @@ import { useAuth } from '@/context/AuthContext';
 import { DEFAULT_QUICK_ACTIONS, type QuickAction } from '@/lib/quickActions';
 import { formatRelative, formatTime, greeting, rotatingMicrocopy } from '@/lib/format';
 import { mapsLink } from '@/lib/location';
-import { Button, EmptyState, IconButton, Modal, Toast, Toggle } from '@/components/ui';
+import { Button, EmptyState, Modal, Toast } from '@/components/ui';
 import { SosButton } from '@/components/SosButton';
 import { EventRow } from '@/components/EventRow';
 import type { AppEvent, EventType } from '@/lib/supabase';
+import { Heart, Sparkles, Send, MapPin, Radio, Wifi, WifiOff } from 'lucide-react';
+
+interface Particle {
+  id: number;
+  x: number;
+  rot: number;
+}
 
 export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 'settings') => void }) {
-  const { connection, partnerName, events, places, quickMessages, online, queueCount, send, partnerLastEvent, myLastEvent, toggleKeepForever } = useAppData();
+  const { connection, partnerName, events, quickMessages, online, queueCount, send, partnerLastEvent, toggleKeepForever } = useAppData();
   const { profile } = useAuth();
   const [toast, setToast] = useState<{ msg: string; tone?: 'default' | 'danger' | 'success' } | null>(null);
   const [sendingType, setSendingType] = useState<string | null>(null);
   const [showLocationModal, setShowLocationModal] = useState<AppEvent | null>(null);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [heartPulsing, setHeartPulsing] = useState(false);
 
   const connected = connection?.status === 'accepted';
+  const myName = profile?.display_name ?? 'You';
 
   const actions = useMemo<QuickAction[]>(() => {
     const custom = quickMessages.map((m) => ({
@@ -30,6 +40,40 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     return [...pinned, ...DEFAULT_QUICK_ACTIONS, ...rest];
   }, [quickMessages]);
 
+  function triggerHeartEffect() {
+    setHeartPulsing(true);
+    setTimeout(() => setHeartPulsing(false), 300);
+
+    const count = 5;
+    const newParticles: Particle[] = Array.from({ length: count }, (_, i) => ({
+      id: Date.now() + i,
+      x: (Math.random() - 0.5) * 120,
+      rot: (Math.random() - 0.5) * 60,
+    }));
+
+    setParticles((prev) => [...prev, ...newParticles]);
+    setTimeout(() => {
+      setParticles((prev) => prev.filter((p) => !newParticles.find((np) => np.id === p.id)));
+    }, 1200);
+  }
+
+  async function handleSendLove() {
+    triggerHeartEffect();
+    setSendingType('LOVE');
+    const res = await send({
+      type: 'READY',
+      message: 'Thinking of you right now ❤️',
+      emoji: '💖',
+    });
+    setSendingType(null);
+    if (res.ok) {
+      setToast({ msg: `Sent a heart to ${partnerName}! 💖`, tone: 'success' });
+    } else {
+      setToast({ msg: res.error ?? 'Failed to send', tone: 'danger' });
+    }
+    setTimeout(() => setToast(null), 2500);
+  }
+
   async function handleAction(a: QuickAction) {
     setSendingType(a.type + a.label);
     const res = await send({ type: a.type, message: a.message, emoji: a.emoji });
@@ -37,25 +81,39 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     if (!res.ok) {
       setToast({ msg: res.error ?? 'Something went wrong', tone: 'danger' });
     } else if (res.offline) {
-      setToast({ msg: 'Saved. We will send this when you are back online. ❤️', tone: 'default' });
+      setToast({ msg: 'Saved offline. We will send this when reconnected. ❤️', tone: 'default' });
     } else {
-      setToast({ msg: 'Sent ❤️', tone: 'success' });
+      setToast({ msg: `Sent to ${partnerName} ❤️`, tone: 'success' });
     }
     setTimeout(() => setToast(null), 2500);
   }
 
-  const recent = events.slice(0, 5);
+  const recent = events.slice(0, 4);
 
   if (!connected) {
     return (
       <div className="app-shell px-5 py-6">
-        <Header onNavigate={onNavigate} online={online} queueCount={queueCount} />
-        <div className="mt-8">
+        <header className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl text-fg">Aanya &amp; Me</h1>
+            <p className="text-xs text-muted">Private connection for two ❤️</p>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent font-medium">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            <span>Pairing</span>
+          </div>
+        </header>
+
+        <div className="my-auto fade-up">
           <EmptyState
-            icon="❤️"
+            icon="💌"
             title="Not connected yet"
-            subtitle="Create a pairing code or enter Aanya's code to start sharing quick messages."
-            action={<Button onClick={() => onNavigate('settings')}>Go to settings</Button>}
+            subtitle="Share your pairing code with Aanya or enter her code in settings to start sending real-time messages!"
+            action={
+              <Button size="lg" onClick={() => onNavigate('settings')} className="w-full">
+                Go to Connection Settings
+              </Button>
+            }
           />
         </div>
       </div>
@@ -63,57 +121,144 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   }
 
   return (
-    <div className="app-shell px-5 py-6">
-      <Header onNavigate={onNavigate} online={online} queueCount={queueCount} />
+    <div className="app-shell px-5 py-6 flex flex-col gap-5">
+      {/* Top Header */}
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-accent uppercase tracking-wider">
+            {greeting(myName)}
+          </p>
+          <h1 className="text-2xl text-fg">Aanya &amp; Me</h1>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-3 py-1.5 shadow-sm text-xs font-medium">
+          {online ? (
+            <>
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-fg-soft font-semibold">{partnerName}</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-3.5 w-3.5 text-muted" />
+              <span className="text-muted">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
+            </>
+          )}
+        </div>
+      </header>
 
-      <section className="mt-4 fade-up">
-        <PartnerStatus
-          name={partnerName}
-          lastEvent={partnerLastEvent}
-        />
+      {/* Main Interactive Heartbeat Centerpiece */}
+      <section className="fade-up">
+        <div className="card p-5 relative overflow-hidden bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/20">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <span className="chip mb-2">
+                <Sparkles className="h-3 w-3" />
+                <span>Live Partner Status</span>
+              </span>
+              <h2 className="text-lg text-fg font-serif">
+                {partnerLastEvent ? partnerLastEvent.message : `Waiting for ${partnerName}'s update`}
+              </h2>
+              <p className="text-xs text-muted mt-1 font-medium">
+                {partnerLastEvent
+                  ? `${partnerLastEvent.emoji} ${formatRelative(partnerLastEvent.occurred_at)}`
+                  : 'Tap the big heart below to poke!'}
+              </p>
+            </div>
+            <div className="text-4xl select-none p-2">
+              {partnerLastEvent?.emoji ?? '🌸'}
+            </div>
+          </div>
+
+          {/* Big Poke / Send Heart Button */}
+          <div className="mt-5 pt-4 border-t border-border/60 flex items-center justify-between relative">
+            <p className="text-xs text-fg-soft font-medium">Send an instant heart poke:</p>
+            <div className="relative">
+              {/* Floating particles */}
+              {particles.map((p) => (
+                <div
+                  key={p.id}
+                  className="heart-particle text-2xl select-none"
+                  style={{
+                    left: '50%',
+                    top: '0%',
+                    ['--tx' as any]: `${p.x}px`,
+                    ['--rot' as any]: `${p.rot}deg`,
+                  }}
+                >
+                  💖
+                </div>
+              ))}
+              <button
+                onClick={handleSendLove}
+                disabled={sendingType === 'LOVE'}
+                className={`relative flex h-14 w-14 items-center justify-center rounded-3xl bg-accent text-white shadow-lg shadow-accent/35 transition-all duration-200 active:scale-90 hover:scale-105 ${
+                  heartPulsing ? 'scale-125' : ''
+                }`}
+                aria-label="Send love"
+              >
+                <Heart className="h-7 w-7 fill-white animate-pulse" />
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section className="mt-5">
-        <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-          What do you want to say?
+      {/* Quick Action Tiles */}
+      <section className="fade-up">
+        <p className="px-1 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
+          <span>Quick Messages</span>
         </p>
         <div className="grid grid-cols-2 gap-3">
           {actions.map((a) => {
             const key = a.type + a.label;
+            const isSending = sendingType === key;
             return (
               <button
                 key={key}
                 className="quick-tile"
                 onClick={() => handleAction(a)}
-                disabled={sendingType === key}
+                disabled={isSending}
               >
-                <span className="emoji">{sendingType === key ? '💬' : a.emoji}</span>
-                <span className="text-xs font-medium leading-tight text-fg-soft">{a.label}</span>
+                <span className="emoji">{isSending ? '💌' : a.emoji}</span>
+                <span className="text-xs font-semibold leading-tight text-fg-soft">{a.label}</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      <section className="mt-6">
-        <SosButton onSent={(offline) => setToast({ msg: offline ? 'SOS saved. Waiting for connection.' : 'SOS sent. Aanya has been notified.', tone: offline ? 'default' : 'danger' })} />
+      {/* Emergency SOS Bar */}
+      <section className="fade-up">
+        <SosButton
+          onSent={(offline) =>
+            setToast({
+              msg: offline
+                ? 'SOS saved offline. Waiting for connection.'
+                : `🚨 SOS sent! ${partnerName} has been alerted with your location.`,
+              tone: offline ? 'default' : 'danger',
+            })
+          }
+        />
       </section>
 
-      <section className="mt-6">
+      {/* Recent Moments Journal */}
+      <section className="fade-up">
         <div className="flex items-center justify-between px-1 pb-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Recent</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Recent Moments</p>
           {events.length > 0 && (
-            <button className="text-xs font-medium text-accent" onClick={() => onNavigate('history')}>
-              View all
+            <button
+              className="text-xs font-semibold text-accent hover:underline"
+              onClick={() => onNavigate('history')}
+            >
+              View all moments &rarr;
             </button>
           )}
         </div>
         {recent.length === 0 ? (
-          <p className="px-1 py-6 text-center text-sm text-muted">
-            No messages yet. Tap one above to let Aanya know you are okay. ❤️
-          </p>
+          <div className="card p-5 text-center">
+            <p className="text-xs text-muted">No messages yet. Send a heart above to start ❤️</p>
+          </div>
         ) : (
-          <div className="card divide-y divide-border overflow-hidden">
+          <div className="card divide-y divide-border/60 overflow-hidden">
             {recent.map((e) => (
               <EventRow
                 key={e.id}
@@ -127,7 +272,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
         )}
       </section>
 
-      <p className="mt-6 text-center text-xs text-muted">{rotatingMicrocopy()}</p>
+      <p className="text-center text-[11px] text-muted pb-2">{rotatingMicrocopy()}</p>
 
       {toast && <Toast message={toast.msg} tone={toast.tone} />}
       {showLocationModal && (
@@ -137,64 +282,12 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   );
 }
 
-function Header({
-  onNavigate,
-  online,
-  queueCount,
-}: {
-  onNavigate: (s: 'places' | 'history' | 'settings') => void;
-  online: boolean;
-  queueCount: number;
-}) {
-  return (
-    <header className="flex items-center justify-between">
-      <div>
-        <h1 className="text-xl">Aanya &amp; Me</h1>
-        <p className="text-xs text-muted">
-          {online ? 'Connected' : 'Offline'}{queueCount > 0 ? ` · ${queueCount} queued` : ''}
-        </p>
-      </div>
-      <div className="flex items-center gap-1">
-        <IconButton aria-label="Places" onClick={() => onNavigate('places')}>📍</IconButton>
-        <IconButton aria-label="History" onClick={() => onNavigate('history')}>📜</IconButton>
-        <IconButton aria-label="Settings" onClick={() => onNavigate('settings')}>⚙️</IconButton>
-      </div>
-    </header>
-  );
-}
-
-function PartnerStatus({ name, lastEvent }: { name: string; lastEvent: AppEvent | null }) {
-  const { profile } = useAuth();
-  const myName = profile?.display_name ?? 'Me';
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-xl">
-          {lastEvent?.emoji ?? '🟢'}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium">{name}</p>
-          <p className="text-sm text-fg-soft">
-            {lastEvent ? lastEvent.message : 'No update yet'}
-          </p>
-          <p className="text-xs text-muted">
-            {lastEvent ? formatRelative(lastEvent.occurred_at) : 'Waiting for first message'}
-          </p>
-        </div>
-      </div>
-      <div className="mt-3 border-t border-border pt-3 text-xs text-muted">
-        {greeting(myName)} ❤️
-      </div>
-    </div>
-  );
-}
-
 function LocationModal({ event, onClose }: { event: AppEvent; onClose: () => void }) {
   return (
-    <Modal open onClose={onClose} title="Shared location">
+    <Modal open onClose={onClose} title="Shared Location">
       {event.latitude != null && event.longitude != null ? (
-        <div>
-          <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-2xl border border-border/80 shadow-sm">
             <iframe
               title="map"
               className="h-48 w-full"
@@ -203,24 +296,27 @@ function LocationModal({ event, onClose }: { event: AppEvent; onClose: () => voi
               src={`https://www.openstreetmap.org/export/embed.html?marker=${event.latitude},${event.longitude}&bbox=${event.longitude - 0.01},${event.latitude - 0.01},${event.longitude + 0.01},${event.latitude + 0.01}`}
             />
           </div>
-          <p className="mt-3 text-sm text-fg-soft">
-            {event.emoji} {event.message}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            Updated {formatTime(event.occurred_at)}
-            {event.accuracy ? ` · ~${Math.round(event.accuracy)}m accuracy` : ''}
-          </p>
+          <div className="rounded-2xl bg-bg-elev p-3 border border-border/60">
+            <p className="text-sm font-semibold text-fg">
+              {event.emoji} {event.message}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              Logged at {formatTime(event.occurred_at)}
+              {event.accuracy ? ` · ~${Math.round(event.accuracy)}m accuracy` : ''}
+            </p>
+          </div>
           <a
             href={mapsLink(event.latitude, event.longitude)}
             target="_blank"
             rel="noreferrer"
-            className="btn btn-outline mt-3 w-full"
+            className="btn btn-outline w-full"
           >
-            Open in Maps
+            <MapPin className="h-4 w-4 text-accent" />
+            <span>Open in Google Maps</span>
           </a>
         </div>
       ) : (
-        <p className="text-sm text-muted">No location was attached to this message.</p>
+        <p className="text-xs text-muted">No location coordinates attached to this moment.</p>
       )}
     </Modal>
   );

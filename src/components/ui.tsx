@@ -165,8 +165,8 @@ export function Toast({ message, tone = 'default' }: { message: string; tone?: '
     success: 'bg-success text-white',
   };
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-      <div className={`fade-up rounded-full px-4 py-2.5 text-sm font-medium shadow-lg ${tones[tone]}`}>
+    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
+      <div className={`fade-up rounded-2xl px-5 py-3 text-sm font-semibold shadow-xl backdrop-blur-md ${tones[tone]}`}>
         {message}
       </div>
     </div>

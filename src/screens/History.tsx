@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
-import { IconButton, EmptyState } from '@/components/ui';
+import { EmptyState, Modal } from '@/components/ui';
 import { EventRow } from '@/components/EventRow';
-import { formatDayLabel } from '@/lib/format';
+import { formatDayLabel, formatTime } from '@/lib/format';
+import { mapsLink } from '@/lib/location';
 import type { AppEvent } from '@/lib/supabase';
+import { ArrowLeft, Clock, Star, MapPin } from 'lucide-react';
 
 type Filter = 'all' | 'messages' | 'locations' | 'saved' | 'sos';
 
@@ -36,23 +38,38 @@ export function History({ onBack }: { onBack: () => void }) {
   }, [filtered]);
 
   return (
-    <div className="app-shell px-5 py-6">
+    <div className="app-shell px-5 py-6 flex flex-col gap-4">
+      {/* Header */}
       <header className="flex items-center gap-2">
-        <IconButton aria-label="Back" onClick={onBack}>←</IconButton>
-        <h1 className="text-xl">History</h1>
+        <button
+          onClick={onBack}
+          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg shadow-sm active:scale-95 transition"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl text-fg">Shared Moments</h1>
+          <p className="text-xs text-muted">Your memories and check-in timeline</p>
+        </div>
       </header>
 
-      <div className="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+      {/* Filter Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
         {([
-          ['all', 'All'],
-          ['messages', 'Messages'],
-          ['locations', 'Locations'],
-          ['saved', '⭐ Saved'],
-          ['sos', 'SOS'],
+          ['all', '✨ All'],
+          ['messages', '💬 Messages'],
+          ['locations', '📍 Locations'],
+          ['saved', '⭐ Saved Forever'],
+          ['sos', '🚨 SOS'],
         ] as [Filter, string][]).map(([f, label]) => (
           <button
             key={f}
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${filter === f ? 'bg-accent text-accent-fg' : 'bg-bg-elev text-fg-soft'}`}
+            className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-semibold transition-all ${
+              filter === f
+                ? 'bg-accent text-white shadow-md shadow-accent/20 scale-105'
+                : 'bg-card border border-border/80 text-fg-soft hover:bg-accent-soft/30'
+            }`}
             onClick={() => setFilter(f)}
           >
             {label}
@@ -60,22 +77,25 @@ export function History({ onBack }: { onBack: () => void }) {
         ))}
       </div>
 
-      <div className="mt-4 flex flex-col gap-4">
+      {/* Moments Grouped by Day */}
+      <div className="flex flex-col gap-4">
         {grouped.length === 0 ? (
           <EmptyState
-            icon={filter === 'saved' ? '⭐' : '📜'}
-            title={filter === 'saved' ? 'No saved memories' : 'Nothing here yet'}
+            icon={filter === 'saved' ? '⭐' : '💌'}
+            title={filter === 'saved' ? 'No saved memories yet' : 'No moments found'}
             subtitle={
               filter === 'saved'
-                ? 'Tap the star on any message to save it permanently.'
-                : 'Your messages and check-ins will appear here.'
+                ? 'Tap the star (⭐) on any message in your feed to save it permanently!'
+                : 'Your sent messages, arrivals and pokes will be recorded here.'
             }
           />
         ) : (
           grouped.map(([day, evs]) => (
-            <div key={day}>
-              <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-muted">{day}</p>
-              <div className="card divide-y divide-border overflow-hidden">
+            <div key={day} className="fade-up">
+              <p className="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-muted">
+                {day}
+              </p>
+              <div className="card divide-y divide-border/60 overflow-hidden">
                 {evs.map((e) => (
                   <EventRow
                     key={e.id}
@@ -100,27 +120,38 @@ export function History({ onBack }: { onBack: () => void }) {
 
 function LocationModal({ event, onClose }: { event: AppEvent; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="card relative z-10 m-0 w-full max-w-md rounded-b-none p-5 sm:m-4 sm:rounded-3xl">
-        <h3 className="mb-3 text-lg">Shared location</h3>
-        {event.latitude != null && event.longitude != null ? (
-          <div>
-            <div className="overflow-hidden rounded-2xl border border-border">
-              <iframe
-                title="map"
-                className="h-48 w-full"
-                loading="lazy"
-                src={`https://www.openstreetmap.org/export/embed.html?marker=${event.latitude},${event.longitude}&bbox=${event.longitude - 0.01},${event.latitude - 0.01},${event.longitude + 0.01},${event.latitude + 0.01}`}
-              />
-            </div>
-            <p className="mt-3 text-sm text-fg-soft">{event.emoji} {event.message}</p>
-            <a href={`https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`} target="_blank" rel="noreferrer" className="btn btn-outline mt-3 w-full">Open in Maps</a>
+    <Modal open onClose={onClose} title="Shared Location Moment">
+      {event.latitude != null && event.longitude != null ? (
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden rounded-2xl border border-border/80 shadow-sm">
+            <iframe
+              title="map"
+              className="h-48 w-full"
+              loading="lazy"
+              src={`https://www.openstreetmap.org/export/embed.html?marker=${event.latitude},${event.longitude}&bbox=${event.longitude - 0.01},${event.latitude - 0.01},${event.longitude + 0.01},${event.latitude + 0.01}`}
+            />
           </div>
-        ) : (
-          <p className="text-sm text-muted">No location attached.</p>
-        )}
-      </div>
-    </div>
+          <div className="rounded-2xl bg-bg-elev p-3 border border-border/60">
+            <p className="text-sm font-semibold text-fg">
+              {event.emoji} {event.message}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {formatTime(event.occurred_at)}
+            </p>
+          </div>
+          <a
+            href={mapsLink(event.latitude, event.longitude)}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-outline w-full"
+          >
+            <MapPin className="h-4 w-4 text-accent" />
+            <span>Open in Maps</span>
+          </a>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">No location attached to this moment.</p>
+      )}
+    </Modal>
   );
 }
