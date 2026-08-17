@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.Vibrator;
 import androidx.core.app.NotificationCompat;
 import org.json.JSONArray;
@@ -39,6 +40,7 @@ public class HeartbeatService extends Service {
     private Handler handler;
     private Runnable checkRunnable;
     private ScreenStateReceiver screenReceiver;
+    private PowerManager powerManager;
 
     // Power button press tracking
     private final List<Long> powerPressTimestamps = new ArrayList<>();
@@ -46,6 +48,7 @@ public class HeartbeatService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         createNotificationChannels();
         handler = new Handler(Looper.getMainLooper());
         
@@ -203,7 +206,13 @@ public class HeartbeatService extends Service {
     }
 
     private void checkLatestEvent() {
+        PowerManager.WakeLock partialLock = null;
         try {
+            if (powerManager != null) {
+                partialLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aanya:check_event_lock");
+                partialLock.acquire(4000);
+            }
+
             SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
             String connectionId = prefs.getString("connection_id", "");
             String myUserId = prefs.getString("user_id", "");
@@ -259,12 +268,30 @@ public class HeartbeatService extends Service {
             conn.disconnect();
         } catch (Exception e) {
             // Ignore network timeouts silently
+        } finally {
+            if (partialLock != null && partialLock.isHeld()) {
+                try {
+                    partialLock.release();
+                } catch (Exception ignored) {}
+            }
         }
     }
 
     private void showSystemNotification(String title, String body) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
+
+        // 1. Physically illuminate and wake the phone screen on the lock screen
+        try {
+            if (powerManager != null) {
+                @SuppressWarnings("deprecation")
+                PowerManager.WakeLock screenLock = powerManager.newWakeLock(
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                        "aanya:lockscreen_wakeup"
+                );
+                screenLock.acquire(5000); // Illuminate screen for 5 seconds
+            }
+        } catch (Exception ignored) {}
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -281,9 +308,12 @@ public class HeartbeatService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setFullScreenIntent(pi, true)
                 .setAutoCancel(true)
                 .setContentIntent(pi)
-                .setVibrate(new long[]{0, 250, 100, 250});
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setLights(0xFFFF1493, 1000, 500)
+                .setVibrate(new long[]{0, 300, 150, 300, 150, 450});
 
         int notifId = (int) (System.currentTimeMillis() % 1000000);
         nm.notify(notifId, builder.build());
@@ -293,15 +323,19 @@ public class HeartbeatService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
-                // 1. Alert Channel (Max Importance, Sound, Vibration)
+                // 1. Alert Channel (Max Importance, Sound, Vibration, Screen Lights, Public on Lockscreen)
                 NotificationChannel alertChannel = new NotificationChannel(
                         ALERT_CHANNEL_ID,
                         "Aanya & Me Love & Moments",
                         NotificationManager.IMPORTANCE_HIGH
                 );
-                alertChannel.setDescription("Instant notifications when app is closed");
+                alertChannel.setDescription("Instant notifications when app is closed or locked");
                 alertChannel.enableVibration(true);
-                alertChannel.setVibrationPattern(new long[]{0, 250, 100, 250});
+                alertChannel.setVibrationPattern(new long[]{0, 300, 150, 300, 150, 450});
+                alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                alertChannel.enableLights(true);
+                alertChannel.setLightColor(0xFFFF1493);
+                alertChannel.setBypassDnd(true);
                 nm.createNotificationChannel(alertChannel);
 
                 // 2. Silent Status Channel for 24/7 Foreground Connection
