@@ -302,85 +302,142 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
         </div>
       </header>
 
-      {/* 1-Hour Live Glance Stories Row */}
-      <div className="flex items-center gap-3.5 py-2 px-1 overflow-x-auto no-scrollbar">
-        {/* Your Glance Bubble */}
-        <button
-          onClick={() => {
-            if (myStatus) {
-              setViewingStatus(myStatus);
-            } else {
-              setShowStatusModal(true);
-            }
-          }}
-          className="flex flex-col items-center gap-1.5 group shrink-0 active:scale-95 transition-transform"
-        >
-          <div
-            className={`relative w-15 h-15 rounded-full p-0.5 transition-all ${
-              myStatus
-                ? 'bg-gradient-to-tr from-rose-500 via-pink-500 to-purple-500 shadow-md shadow-rose-500/25 scale-105'
-                : 'border-2 border-dashed border-border/80 hover:border-accent'
-            }`}
-          >
-            <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center overflow-hidden">
-              {myStatus?.type === 'PHOTO' ? (
-                <img src={myStatus.media_url} alt="My status" className="w-full h-full object-cover" />
-              ) : myStatus?.type === 'VIDEO' ? (
-                <video src={myStatus.media_url} className="w-full h-full object-cover" />
-              ) : myStatus?.type === 'VOICE' ? (
-                <Mic className="w-6 h-6 text-pink-400 animate-pulse" />
-              ) : (
-                <Camera className="w-6 h-6 text-muted group-hover:text-accent transition-colors" />
-              )}
-            </div>
-            {!myStatus && (
-              <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold border-2 border-bg shadow-sm">
-                +
-              </div>
-            )}
+      {/* 1-Hour Live Glance Stories Section */}
+      <div className="card p-4 bg-gradient-to-br from-card via-card to-accent-soft/20 border border-border/70 shadow-md flex flex-col gap-3">
+        <div className="flex items-center justify-between pb-1 border-b border-border/50">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">⏱️</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-fg font-serif">1-Hour Live Glances</span>
           </div>
-          <span className="text-[11px] font-semibold text-fg-soft max-w-[70px] truncate">
-            {myStatus ? 'Your Glance' : 'Add Glance'}
+          <span className="text-[10px] font-semibold text-muted bg-bg-elev px-2 py-0.5 rounded-full border border-border/60">
+            Auto-clears in 1h
           </span>
-        </button>
+        </div>
 
-        {/* Partner's Glance Bubble */}
-        <button
-          onClick={() => {
-            if (partnerStatus) {
-              setViewingStatus(partnerStatus);
-            }
-          }}
-          className={`flex flex-col items-center gap-1.5 group shrink-0 transition-transform ${
-            !partnerStatus ? 'opacity-50 cursor-default' : 'active:scale-95'
-          }`}
-        >
-          <div
-            className={`relative w-15 h-15 rounded-full p-0.5 transition-all ${
-              partnerStatus
-                ? 'bg-gradient-to-tr from-rose-500 via-purple-500 to-pink-500 shadow-lg shadow-pink-500/30 ring-2 ring-rose-400/60 animate-pulse scale-105'
-                : 'border border-border/60'
+        {/* Story Bubbles Row */}
+        <div className="grid grid-cols-2 gap-3 py-1">
+          {/* 1. YOUR GLANCE CARD */}
+          <button
+            onClick={() => {
+              if (myStatus) {
+                setViewingStatus(myStatus);
+              } else {
+                setShowStatusModal(true);
+              }
+            }}
+            className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 text-center group active:scale-98 ${
+              myStatus
+                ? 'bg-gradient-to-b from-rose-950/30 to-card border-rose-500/40 shadow-sm shadow-rose-500/10'
+                : 'bg-bg-elev/70 border-border/70 hover:border-accent/60'
             }`}
           >
-            <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center overflow-hidden">
-              {partnerStatus?.type === 'PHOTO' ? (
-                <img src={partnerStatus.media_url} alt="Partner status" className="w-full h-full object-cover" />
-              ) : partnerStatus?.type === 'VIDEO' ? (
-                <video src={partnerStatus.media_url} className="w-full h-full object-cover" />
-              ) : partnerStatus?.type === 'VOICE' ? (
-                <Mic className="w-6 h-6 text-rose-400 animate-pulse" />
-              ) : (
-                <span className="text-xl">❤️</span>
+            <div
+              className={`relative w-14 h-14 rounded-full p-0.5 transition-all ${
+                myStatus
+                  ? 'bg-gradient-to-tr from-rose-500 via-pink-500 to-purple-500 shadow-md shadow-rose-500/30 scale-105'
+                  : 'border-2 border-dashed border-border/80 group-hover:border-accent'
+              }`}
+            >
+              <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                {myStatus?.type === 'PHOTO' ? (
+                  <img src={myStatus.media_url} alt="My status" className="w-full h-full object-cover" />
+                ) : myStatus?.type === 'VIDEO' ? (
+                  <video src={myStatus.media_url} className="w-full h-full object-cover" />
+                ) : myStatus?.type === 'VOICE' ? (
+                  <Mic className="w-6 h-6 text-pink-400 animate-pulse" />
+                ) : (
+                  <Camera className="w-6 h-6 text-muted group-hover:text-accent transition-colors" />
+                )}
+              </div>
+              {!myStatus && (
+                <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold border-2 border-bg shadow-sm">
+                  +
+                </div>
               )}
             </div>
-            {partnerStatus && (
-              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 border-2 border-bg animate-ping" />
-            )}
-          </div>
-          <span className="text-[11px] font-semibold text-fg-soft max-w-[75px] truncate">
-            {partnerStatus ? `${partnerName} · 1h` : `${partnerName}`}
-          </span>
-        </button>
+            <div>
+              <p className="text-xs font-bold text-fg">Your Glance</p>
+              <p className="text-[10px] text-muted font-medium mt-0.5">
+                {myStatus ? 'Tap to view / manage' : '+ Add moment'}
+              </p>
+            </div>
+          </button>
+
+          {/* 2. PARTNER'S GLANCE CARD */}
+          <button
+            onClick={() => {
+              if (partnerStatus) {
+                setViewingStatus(partnerStatus);
+              }
+            }}
+            disabled={!partnerStatus}
+            className={`p-3 rounded-2xl border transition-all flex flex-col items-center gap-2 text-center ${
+              partnerStatus
+                ? 'bg-gradient-to-b from-purple-950/40 to-card border-purple-500/50 shadow-lg shadow-purple-500/20 active:scale-98 cursor-pointer animate-pulse'
+                : 'bg-bg-elev/40 border-border/40 opacity-60 cursor-default'
+            }`}
+          >
+            <div
+              className={`relative w-14 h-14 rounded-full p-0.5 transition-all ${
+                partnerStatus
+                  ? 'bg-gradient-to-tr from-rose-500 via-purple-500 to-pink-500 shadow-lg shadow-pink-500/40 ring-2 ring-rose-400 scale-105'
+                  : 'border border-border/60'
+              }`}
+            >
+              <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                {partnerStatus?.type === 'PHOTO' ? (
+                  <img src={partnerStatus.media_url} alt="Partner status" className="w-full h-full object-cover" />
+                ) : partnerStatus?.type === 'VIDEO' ? (
+                  <video src={partnerStatus.media_url} className="w-full h-full object-cover" />
+                ) : partnerStatus?.type === 'VOICE' ? (
+                  <Mic className="w-6 h-6 text-rose-400 animate-pulse" />
+                ) : (
+                  <span className="text-xl">❤️</span>
+                )}
+              </div>
+              {partnerStatus && (
+                <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-bg animate-ping" />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-fg flex items-center justify-center gap-1">
+                <span>{partnerName}'s Glance</span>
+                {partnerStatus && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
+              </p>
+              <p className="text-[10px] font-semibold mt-0.5">
+                {partnerStatus ? (
+                  <span className="text-rose-400 font-bold">✨ Tap to View</span>
+                ) : (
+                  <span className="text-muted">No active glance</span>
+                )}
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* Prominent Banner if Partner posted a Glance */}
+        {partnerStatus && (
+          <button
+            onClick={() => setViewingStatus(partnerStatus)}
+            className="w-full p-3 rounded-2xl bg-gradient-to-r from-rose-500/25 via-purple-500/25 to-pink-500/25 border border-rose-400/60 flex items-center justify-between shadow-md active:scale-98 transition-all group"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📸</span>
+              <div className="text-left">
+                <p className="text-xs font-bold text-fg flex items-center gap-1.5">
+                  <span>{partnerName} shared a Glance!</span>
+                  <span className="text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">
+                    VIEW
+                  </span>
+                </p>
+                <p className="text-[10px] text-muted">Tap to see their photo, video, or voice note</p>
+              </div>
+            </div>
+            <span className="text-xs text-accent font-bold group-hover:translate-x-1 transition-transform">
+              &rarr;
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -346,20 +346,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setEphemeralStatuses([]);
       return;
     }
-    const nowIso = new Date().toISOString();
-    const { data } = await supabase
-      .from('ephemeral_statuses')
-      .select('*')
-      .eq('connection_id', connection.id)
-      .gt('expires_at', nowIso)
-      .order('created_at', { ascending: false });
-    if (data) {
-      setEphemeralStatuses(data as EphemeralStatus[]);
+    try {
+      const { data } = await supabase
+        .from('ephemeral_statuses')
+        .select('*')
+        .eq('connection_id', connection.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (data) {
+        const now = Date.now();
+        // Grace buffer of 5 minutes to prevent client clock skew from hiding valid statuses
+        const active = (data as EphemeralStatus[]).filter(
+          (s) => new Date(s.expires_at).getTime() > now - 5 * 60 * 1000
+        );
+        setEphemeralStatuses(active);
+      }
+    } catch (err) {
+      console.warn('Error loading ephemeral statuses:', err);
     }
   }, [connection]);
 
   useEffect(() => {
     refreshEphemeralStatuses();
+    const interval = setInterval(refreshEphemeralStatuses, 10000);
+    const onFocus = () => refreshEphemeralStatuses();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [refreshEphemeralStatuses]);
 
   const uploadEphemeralStatus = useCallback(
