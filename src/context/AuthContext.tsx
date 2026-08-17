@@ -19,6 +19,8 @@ const Ctx = createContext<AuthState | null>(null);
 
 const DEVICE_ID_KEY = 'aanya_device_id';
 const DISPLAY_NAME_KEY = 'aanya_saved_display_name';
+const CACHED_USER_KEY = 'aanya_cached_user';
+const CACHED_PROFILE_KEY = 'aanya_cached_profile';
 
 function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -30,10 +32,27 @@ function getOrCreateDeviceId(): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const raw = localStorage.getItem(CACHED_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const raw = localStorage.getItem(CACHED_PROFILE_KEY);
+      if (raw) return JSON.parse(raw);
+      const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
+      if (savedName) return { id: 'cached', display_name: savedName, avatar_url: null, created_at: '', updated_at: '' };
+      return null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem(CACHED_USER_KEY) && !localStorage.getItem(DISPLAY_NAME_KEY));
 
   const loadProfile = useCallback(async (uid: string, fallbackName?: string) => {
     try {
@@ -54,9 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .upsert({ id: uid, display_name: savedName })
           .select('*')
           .maybeSingle();
-        if (created) setProfile(created as Profile);
+        if (created) {
+          setProfile(created as Profile);
+          localStorage.setItem(CACHED_PROFILE_KEY, JSON.stringify(created));
+        }
       } else {
         setProfile(data as Profile);
+        localStorage.setItem(CACHED_PROFILE_KEY, JSON.stringify(data));
       }
     } catch (e) {
       console.warn('loadProfile error:', e);
@@ -69,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session?.user) {
         setSession(data.session);
         setUser(data.session.user);
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(data.session.user));
         await loadProfile(data.session.user.id);
       } else {
         // Check if device already has a saved account
@@ -81,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (signInData.user) {
             setSession(signInData.session);
             setUser(signInData.user);
+            localStorage.setItem(CACHED_USER_KEY, JSON.stringify(signInData.user));
             await loadProfile(signInData.user.id, savedName);
           }
         }
@@ -99,9 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(sess.user));
         loadProfile(sess.user.id);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
+        localStorage.removeItem(CACHED_USER_KEY);
+        localStorage.removeItem(CACHED_PROFILE_KEY);
       }
       setLoading(false);
     });

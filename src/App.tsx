@@ -17,7 +17,9 @@ function Router() {
   const { user, loading } = useAuth();
   const { connection } = useAppData();
   const [screen, setScreen] = useState<Screen>('home');
-  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('aanya_onboarded') === '1');
+  const [onboarded, setOnboarded] = useState(() => 
+    Boolean(localStorage.getItem('aanya_onboarded') === '1' || localStorage.getItem('aanya_saved_display_name') || localStorage.getItem('aanya_cached_user'))
+  );
 
   // Android Hardware Back Button Handler
   useEffect(() => {
@@ -44,7 +46,7 @@ function Router() {
     };
   }, []);
 
-  if (loading) {
+  if (loading && !user && !localStorage.getItem('aanya_saved_display_name')) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
         <div className="flex flex-col items-center gap-3">
@@ -57,16 +59,11 @@ function Router() {
     );
   }
 
-  if (!user) {
-    return <Onboarding onFinish={() => setOnboarded(true)} />;
-  }
-
-  if (!onboarded && (!connection || connection.status !== 'accepted') && !localStorage.getItem('aanya_skipped_pair')) {
+  if (!user && !localStorage.getItem('aanya_saved_display_name') && !localStorage.getItem('aanya_cached_user')) {
     return (
       <Onboarding
         onFinish={() => {
           localStorage.setItem('aanya_onboarded', '1');
-          localStorage.setItem('aanya_skipped_pair', '1');
           setOnboarded(true);
         }}
       />
