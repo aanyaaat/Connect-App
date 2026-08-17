@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aanya &amp; Me</string>
+    <string name="title_activity_main">Aanya &amp; Me</string>
+    <string name="package_name">com.aanya.connectapp</string>
+    <string name="custom_url_scheme">com.aanya.connectapp</string>
+</resources>

@@ -1,0 +1,25 @@
+{
+  "name": "Aanya & Me",
+  "short_name": "Aanya & Me",
+  "description": "A tiny, private connection button for two. Just one tap away.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf7f4",
+  "theme_color": "#9f1239",
+  "categories": ["lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/heart.svg",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/svg+xml"
+    }
+  ]
+}

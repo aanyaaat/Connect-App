@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#be123c" />
+      <stop offset="50%" stop-color="#9f1239" />
+      <stop offset="100%" stop-color="#881337" />
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#ffe4e6" />
+    </linearGradient>
+    <linearGradient id="subtleGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fda4af" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#e11d48" stop-opacity="0" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#4c0519" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- App Icon Squircle Background -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  
+  <!-- Subtle Inner Top Highlight -->
+  <rect width="512" height="256" rx="128" fill="url(#subtleGlow)" opacity="0.4" />
+
+  <!-- Main Connected Heart Graphic -->
+  <g filter="url(#shadow)">
+    <path 
+      d="M256 420 C250 415 110 300 85 210 C62 130 120 70 190 70 C225 70 248 95 256 108 C264 95 287 70 322 70 C392 70 450 130 427 210 C402 300 262 415 256 420 Z" 
+      fill="url(#heartGrad)" 
+    />
+    <!-- Spark / Small Inner Heart Accent -->
+    <path 
+      d="M256 315 C253 312 170 245 155 190 C140 140 178 105 216 105 C236 105 251 118 256 126 C261 118 276 105 296 105 C334 105 372 140 357 190 C342 245 259 312 256 315 Z" 
+      fill="#f43f5e" 
+      opacity="0.9"
+    />
+    <!-- Small Connection Pulse Ring -->
+    <circle cx="256" cy="180" r="18" fill="#ffffff" />
+  </g>
+</svg>
