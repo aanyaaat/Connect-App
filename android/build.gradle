@@ -30,6 +30,27 @@ subprojects {
                 }
             }
         }
+        project.tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = '17'
+            targetCompatibility = '17'
+        }
+        project.tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }.configureEach {
+            try {
+                if (hasProperty('compilerOptions')) {
+                    compilerOptions {
+                        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                    }
+                } else if (hasProperty('kotlinOptions')) {
+                    kotlinOptions {
+                        jvmTarget = "17"
+                    }
+                }
+            } catch (Exception ignored) {
+                try {
+                    kotlinOptions.jvmTarget = "17"
+                } catch (Exception ignored2) {}
+            }
+        }
     }
 }
 
