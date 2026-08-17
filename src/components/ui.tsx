@@ -1,4 +1,5 @@
 import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 
 type Variant = 'primary' | 'ghost' | 'outline' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
@@ -20,15 +21,15 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const sizes: Record<Size, string> = {
-    sm: 'px-3 text-sm min-h-[36px]',
-    md: 'px-5 text-sm',
-    lg: 'px-6 text-base min-h-[52px]',
+    sm: 'px-3 text-xs min-h-[38px] rounded-xl',
+    md: 'px-5 text-sm min-h-[46px] rounded-2xl',
+    lg: 'px-6 text-base min-h-[52px] rounded-2xl',
   };
   const variants: Record<Variant, string> = {
     primary: 'btn-primary',
     ghost: 'btn-ghost',
     outline: 'btn-outline',
-    danger: 'bg-danger text-white hover:brightness-105',
+    danger: 'bg-danger text-white hover:brightness-105 shadow-md shadow-danger/25',
   };
   return (
     <button
@@ -58,7 +59,7 @@ export function IconButton({
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-soft transition hover:bg-accent-soft/60 hover:text-accent ${className}`}
+      className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl text-fg-soft transition hover:bg-accent-soft/60 hover:text-accent active:scale-95 ${className}`}
       {...rest}
     >
       {children}
@@ -88,13 +89,24 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden
       />
-      <div className="card relative z-10 m-0 w-full max-w-md rounded-b-none p-5 fade-up sm:m-4 sm:rounded-3xl">
-        {title && <h3 className="mb-3 text-lg">{title}</h3>}
-        {children}
+      <div className="card relative z-10 m-0 w-full max-w-md max-h-[85vh] flex flex-col rounded-b-none p-5 pb-8 fade-up sm:m-4 sm:rounded-3xl shadow-2xl">
+        <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0">
+          <h3 className="text-lg font-serif font-bold text-fg">{title ?? ''}</h3>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-elev text-muted hover:text-fg hover:bg-accent-soft/50 transition"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1 flex flex-col gap-3">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -116,12 +128,12 @@ export function Toggle({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 ${
         checked ? 'bg-accent' : 'bg-border-strong'
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
@@ -142,9 +154,9 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-      <div className="text-4xl opacity-80">{icon}</div>
-      <h3 className="text-lg">{title}</h3>
-      {subtitle && <p className="max-w-xs text-sm text-fg-soft">{subtitle}</p>}
+      <div className="text-5xl select-none filter drop-shadow-sm">{icon}</div>
+      <h3 className="text-lg font-serif font-bold text-fg">{title}</h3>
+      {subtitle && <p className="max-w-xs text-xs text-muted font-medium">{subtitle}</p>}
       {action}
     </div>
   );
@@ -152,7 +164,7 @@ export function EmptyState({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+    <p className="px-1 pb-1.5 text-xs font-bold uppercase tracking-wider text-muted">
       {children}
     </p>
   );
@@ -160,13 +172,13 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 
 export function Toast({ message, tone = 'default' }: { message: string; tone?: 'default' | 'danger' | 'success' }) {
   const tones = {
-    default: 'bg-fg text-bg',
-    danger: 'bg-danger text-white',
-    success: 'bg-success text-white',
+    default: 'bg-fg text-bg border border-border',
+    danger: 'bg-danger text-white shadow-danger/30',
+    success: 'bg-emerald-600 text-white shadow-emerald-600/30',
   };
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
-      <div className={`fade-up rounded-2xl px-5 py-3 text-sm font-semibold shadow-xl backdrop-blur-md ${tones[tone]}`}>
+    <div className="pointer-events-none fixed inset-x-0 bottom-28 z-50 flex justify-center px-4">
+      <div className={`fade-up rounded-2xl px-5 py-3 text-xs font-bold shadow-xl backdrop-blur-md ${tones[tone]}`}>
         {message}
       </div>
     </div>
