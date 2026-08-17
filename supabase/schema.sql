@@ -300,6 +300,12 @@ do $$
 begin
   if not exists (
     select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'connections'
+  ) then
+    alter publication supabase_realtime add table public.connections;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
     where pubname = 'supabase_realtime' and tablename = 'events'
   ) then
     alter publication supabase_realtime add table public.events;

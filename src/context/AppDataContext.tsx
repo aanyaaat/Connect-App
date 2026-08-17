@@ -109,7 +109,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    setConnection(data as Connection | null);
+    if (data) {
+      setConnection(data as Connection);
+      if (data.pairing_code) {
+        localStorage.setItem('aanya_active_code', data.pairing_code);
+      }
+    } else {
+      setConnection(null);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -121,6 +128,41 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setQuickMessages([]);
     }
   }, [user, loadConnection]);
+
+  // Realtime connection listener so creator immediately gets accepted when partner joins!
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`connections_user_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connections' },
+        (payload) => {
+          const c = payload.new as Connection;
+          if (c && (c.user_a === user.id || c.user_b === user.id)) {
+            setConnection(c);
+            if (c.pairing_code) localStorage.setItem('aanya_active_code', c.pairing_code);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Polling fallback when connection is pending or null (every 3 seconds)
+  useEffect(() => {
+    if (!user) return;
+    if (connection?.status === 'accepted') return;
+
+    const interval = setInterval(() => {
+      loadConnection();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [user, connection?.status, loadConnection]);
 
   // ---- load partner profile
   useEffect(() => {
@@ -368,13 +410,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
     const conn = existing as Connection | null;
     if (!conn) return { ok: false, error: 'No connection found for that code.' };
-    if (conn.user_a === user.id) return { ok: false, error: "That's your own code." };
-    if (conn.user_b) return { ok: false, error: 'That connection is already paired.' };
+
+    // If this device is already one of the participants (e.g. testing between mobile & browser)
+    if (conn.user_a === user.id || conn.user_b === user.id) {
+      setConnection(conn);
+      localStorage.setItem('aanya_active_code', code);
+      return { ok: true };
+    }
+
     const { error } = await supabase
       .from('connections')
       .update({ user_b: user.id, status: 'accepted', accepted_at: new Date().toISOString() })
       .eq('id', conn.id);
     if (error) return { ok: false, error: error.message };
+    setConnection({ ...conn, user_b: user.id, status: 'accepted' });
     localStorage.setItem('aanya_active_code', code);
     await loadConnection();
     return { ok: true };
