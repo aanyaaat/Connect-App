@@ -257,16 +257,19 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
             </div>
           )}
 
-          <div className="flex items-center gap-2 rounded-full bg-card border border-border/80 px-3.5 py-1.5 shadow-sm text-xs font-medium">
+          {/* Connection Status Badge clearly showing Partner's Name */}
+          <div className="flex items-center gap-2 rounded-2xl bg-card/95 border border-accent/40 px-3.5 py-1.5 shadow-md text-xs font-medium">
             {online ? (
               <>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-fg font-semibold">{partnerName}</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-muted text-[11px] font-semibold uppercase tracking-wider">Partner:</span>
+                <span className="text-accent font-bold font-serif text-sm">{partnerName}</span>
+                <span className="text-emerald-400 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">LIVE</span>
               </>
             ) : (
               <>
                 <WifiOff className="h-3.5 w-3.5 text-muted" />
-                <span className="text-muted">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
+                <span className="text-muted font-medium">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
               </>
             )}
           </div>
@@ -307,9 +310,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
             <div className="card p-6 md:p-7 relative overflow-hidden bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/25 shadow-lg">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <span className="chip mb-2.5">
+                  <span className="chip mb-2.5 border-accent/40 bg-accent/15 text-accent font-bold">
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span>Live Partner Status</span>
+                    <span>Partner: {partnerName}</span>
                   </span>
                   <h2 className="text-xl md:text-2xl text-fg font-serif">
                     {partnerLastEvent ? partnerLastEvent.message : `Waiting for ${partnerName}'s update`}

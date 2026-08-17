@@ -15,7 +15,7 @@ type Screen = 'home' | 'places' | 'history' | 'settings';
 
 function Router() {
   const { user, loading } = useAuth();
-  const { connection } = useAppData();
+  const { connection, partnerName } = useAppData();
   const [screen, setScreen] = useState<Screen>('home');
   const [onboarded, setOnboarded] = useState(() => 
     Boolean(localStorage.getItem('aanya_onboarded') === '1' || localStorage.getItem('aanya_saved_display_name') || localStorage.getItem('aanya_cached_user'))
@@ -88,7 +88,16 @@ function Router() {
             </span>
             <div>
               <h1 className="text-xl font-serif font-bold text-fg leading-none">Aanya &amp; Me</h1>
-              <p className="text-[11px] text-muted font-medium mt-0.5">Private Couple Space</p>
+              <p className="text-[11px] text-muted font-medium mt-0.5">
+                {connection && partnerName ? (
+                  <span className="text-accent font-semibold flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Connected with {partnerName} ❤️
+                  </span>
+                ) : (
+                  'Private Couple Space'
+                )}
+              </p>
             </div>
           </div>
 
