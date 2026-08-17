@@ -41,6 +41,8 @@ public class HeartbeatService extends Service {
     private Runnable checkRunnable;
     private ScreenStateReceiver screenReceiver;
     private PowerManager powerManager;
+    private PowerManager.WakeLock serviceWakeLock;
+    private Thread pollingThread;
 
     // Power button press tracking
     private final List<Long> powerPressTimestamps = new ArrayList<>();
@@ -49,10 +51,18 @@ public class HeartbeatService extends Service {
     public void onCreate() {
         super.onCreate();
         powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        createNotificationChannels();
-        handler = new Handler(Looper.getMainLooper());
         
-        // Immediately start foreground notification to guarantee 24/7 keep-alive
+        // 1. Acquire persistent service WakeLock so CPU does NOT sleep in background/lockscreen
+        try {
+            if (powerManager != null && (serviceWakeLock == null || !serviceWakeLock.isHeld())) {
+                serviceWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aanya:service_daemon_lock");
+                serviceWakeLock.acquire();
+            }
+        } catch (Exception ignored) {}
+
+        createNotificationChannels();
+        
+        // 2. Immediately start foreground notification to guarantee 24/7 keep-alive
         try {
             Notification fgNotif = buildForegroundNotification();
             startForeground(1001, fgNotif);
@@ -60,7 +70,7 @@ public class HeartbeatService extends Service {
             e.printStackTrace();
         }
 
-        // Register power button / screen on/off listener
+        // 3. Register power button / screen on/off listener
         registerScreenStateReceiver();
     }
 
@@ -190,29 +200,27 @@ public class HeartbeatService extends Service {
                 .build();
     }
 
-    private void startPollingDaemon() {
-        checkRunnable = new Runnable() {
-            @Override
-            public void run() {
-                new Thread(() -> {
+    // Dedicated high-priority worker thread so Looper/Handler never freezes during lockscreen sleep
+    private synchronized void startPollingDaemon() {
+        if (pollingThread != null && pollingThread.isAlive()) return;
+        pollingThread = new Thread(() -> {
+            while (isRunning) {
+                try {
                     checkLatestEvent();
-                }).start();
-                if (isRunning) {
-                    handler.postDelayed(this, 3000); // Check every 3 seconds in background
+                    Thread.sleep(2000); // Active continuous 2s polling
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception e) {
+                    try { Thread.sleep(2500); } catch (Exception ignored) {}
                 }
             }
-        };
-        handler.post(checkRunnable);
+        }, "AanyaPollingDaemon");
+        pollingThread.setPriority(Thread.MAX_PRIORITY);
+        pollingThread.start();
     }
 
     private void checkLatestEvent() {
-        PowerManager.WakeLock partialLock = null;
         try {
-            if (powerManager != null) {
-                partialLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aanya:check_event_lock");
-                partialLock.acquire(4000);
-            }
-
             SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
             String connectionId = prefs.getString("connection_id", "");
             String myUserId = prefs.getString("user_id", "");
@@ -268,12 +276,6 @@ public class HeartbeatService extends Service {
             conn.disconnect();
         } catch (Exception e) {
             // Ignore network timeouts silently
-        } finally {
-            if (partialLock != null && partialLock.isHeld()) {
-                try {
-                    partialLock.release();
-                } catch (Exception ignored) {}
-            }
         }
     }
 
@@ -289,7 +291,15 @@ public class HeartbeatService extends Service {
                         PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
                         "aanya:lockscreen_wakeup"
                 );
-                screenLock.acquire(5000); // Illuminate screen for 5 seconds
+                screenLock.acquire(6000); // Illuminate screen for 6 seconds
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Direct tactile vibration
+        try {
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                v.vibrate(new long[]{0, 300, 150, 300, 150, 450}, -1);
             }
         } catch (Exception ignored) {}
 
@@ -354,8 +364,15 @@ public class HeartbeatService extends Service {
     @Override
     public void onDestroy() {
         isRunning = false;
-        if (handler != null && checkRunnable != null) {
-            handler.removeCallbacks(checkRunnable);
+        if (pollingThread != null) {
+            try {
+                pollingThread.interrupt();
+            } catch (Exception ignored) {}
+        }
+        if (serviceWakeLock != null && serviceWakeLock.isHeld()) {
+            try {
+                serviceWakeLock.release();
+            } catch (Exception ignored) {}
         }
         if (screenReceiver != null) {
             try {
