@@ -22,9 +22,11 @@ import {
   Check,
   Trash2,
   Plus,
+  Bell,
 } from 'lucide-react';
+import { requestNotifPermission, showLocalNotification, notifSupported } from '@/lib/notifications';
 
-type Section = 'profile' | 'connection' | 'messages' | 'appearance' | 'location' | 'storage' | 'privacy' | 'about';
+type Section = 'profile' | 'connection' | 'messages' | 'notifications' | 'appearance' | 'location' | 'storage' | 'privacy' | 'about';
 
 export function Settings({ onBack }: { onBack: () => void }) {
   const [section, setSection] = useState<Section | null>(null);
@@ -32,6 +34,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
   const rows: { key: Section; icon: any; title: string; subtitle: string }[] = [
     { key: 'profile', icon: User, title: 'My Profile', subtitle: 'Name and avatar settings' },
     { key: 'connection', icon: HeartHandshake, title: 'Partner Connection', subtitle: 'Pairing code and link status' },
+    { key: 'notifications', icon: Bell, title: 'Notifications & Lock Screen', subtitle: 'Push alerts & 1-tap lockscreen actions' },
     { key: 'messages', icon: Sparkles, title: 'Quick Messages', subtitle: 'Custom tiles and reaction shortcuts' },
     { key: 'appearance', icon: Palette, title: 'Appearance & Themes', subtitle: '6 aesthetic palettes & dark mode' },
     { key: 'location', icon: MapPin, title: 'Location Sharing', subtitle: 'Arrival alerts & privacy rules' },
@@ -90,6 +93,7 @@ function SettingsModal({ section, onClose }: { section: Section; onClose: () => 
   const titles: Record<Section, string> = {
     profile: 'My Profile',
     connection: 'Partner Connection',
+    notifications: 'Notifications & Lock Screen',
     messages: 'Quick Messages',
     appearance: 'Appearance & Themes',
     location: 'Location Sharing',
@@ -101,6 +105,7 @@ function SettingsModal({ section, onClose }: { section: Section; onClose: () => 
     <Modal open onClose={onClose} title={titles[section]}>
       {section === 'profile' && <ProfileSection />}
       {section === 'connection' && <ConnectionSection />}
+      {section === 'notifications' && <NotificationsSection />}
       {section === 'messages' && <MessagesSection />}
       {section === 'appearance' && <AppearanceSection />}
       {section === 'location' && <LocationSection />}
@@ -108,6 +113,68 @@ function SettingsModal({ section, onClose }: { section: Section; onClose: () => 
       {section === 'privacy' && <PrivacySection />}
       {section === 'about' && <AboutSection />}
     </Modal>
+  );
+}
+
+function NotificationsSection() {
+  const [granted, setGranted] = useState<boolean>(
+    typeof Notification !== 'undefined' && Notification.permission === 'granted'
+  );
+  const [testSent, setTestSent] = useState(false);
+
+  async function handleRequest() {
+    const res = await requestNotifPermission();
+    if (res === 'granted') setGranted(true);
+  }
+
+  async function handleTest() {
+    await showLocalNotification({
+      title: '💖 Aanya & Me Test Alert',
+      body: 'Instant notification received successfully!',
+      isActionable: true,
+    });
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 2500);
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="card p-4 bg-gradient-to-br from-card to-accent-soft/20">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-white">
+            <Bell className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-fg">Push &amp; Lock-Screen Alerts</p>
+            <p className="text-xs text-muted">
+              {granted
+                ? 'System notifications are ACTIVE and enabled! 🎉'
+                : 'Allow notifications to receive pokes & arrival alerts'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {!granted && notifSupported() && (
+        <Button onClick={handleRequest} className="w-full">
+          <Bell className="h-4 w-4" />
+          <span>Enable Notifications on this Device</span>
+        </Button>
+      )}
+
+      <Button variant="outline" onClick={handleTest} className="w-full">
+        <span>{testSent ? 'Notification Sent! Check your status bar / screen ❤️' : 'Send Test Notification'}</span>
+      </Button>
+
+      <div className="rounded-2xl bg-bg-elev p-3 border border-border/60 text-xs text-muted flex flex-col gap-1.5">
+        <p className="font-semibold text-fg-soft flex items-center gap-1.5">
+          <span>🔒</span> Lock-Screen Quick Actions:
+        </p>
+        <p>• 🏠 <strong>Reached Home</strong>: Send safe arrival update directly from your lock screen without opening the phone.</p>
+        <p>• 🚗 <strong>On My Way</strong>: Quick driving / transit update.</p>
+        <p>• 💖 <strong>Send Love</strong>: Instant poke straight to your partner.</p>
+      </div>
+    </div>
   );
 }
 

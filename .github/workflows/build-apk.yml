@@ -37,9 +37,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v4
+          cache: 'gradle'
 
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
