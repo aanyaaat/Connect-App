@@ -25,29 +25,29 @@ subprojects {
         if (project.plugins.hasPlugin('com.android.application') || project.plugins.hasPlugin('com.android.library')) {
             project.android {
                 compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
+                    sourceCompatibility JavaVersion.VERSION_21
+                    targetCompatibility JavaVersion.VERSION_21
                 }
             }
         }
         project.tasks.withType(JavaCompile).configureEach {
-            sourceCompatibility = '17'
-            targetCompatibility = '17'
+            sourceCompatibility = '21'
+            targetCompatibility = '21'
         }
         project.tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }.configureEach {
             try {
                 if (hasProperty('compilerOptions')) {
                     compilerOptions {
-                        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
                     }
                 } else if (hasProperty('kotlinOptions')) {
                     kotlinOptions {
-                        jvmTarget = "17"
+                        jvmTarget = "21"
                     }
                 }
             } catch (Exception ignored) {
                 try {
-                    kotlinOptions.jvmTarget = "17"
+                    kotlinOptions.jvmTarget = "21"
                 } catch (Exception ignored2) {}
             }
         }
