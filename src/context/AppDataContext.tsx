@@ -3,7 +3,7 @@ import { supabase, type AppEvent, type Connection, type Place, type QuickMessage
 import { useAuth } from './AuthContext';
 import { enqueue, loadQueue, removeFromQueue, saveQueue, type QueuedEvent } from '@/lib/queue';
 import { generatePairingCode } from '@/lib/format';
-import { showLocalNotification, initializeNotificationSystem } from '@/lib/notifications';
+import { showLocalNotification, initializeNotificationSystem, dispatchPushToPartner } from '@/lib/notifications';
 import { getCurrentPosition, watchPosition, type Coords } from '@/lib/location';
 import { evaluateArrival, loadArrivalStates, saveArrivalStates } from '@/lib/arrival';
 
@@ -383,6 +383,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
       const { error } = await supabase.from('events').upsert(ev, { onConflict: 'id' });
       setSending(false);
+
+      // Also trigger background push to partner in case their app or screen is closed
+      if (partnerId) {
+        dispatchPushToPartner(partnerId, `${ev.emoji} ${profile?.display_name ?? 'Your Partner'}`, ev.message);
+      }
+
       if (error) {
         enqueue({
           id: ev.id,
@@ -402,12 +408,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return { ok: true, offline: false };
     },
-    [user, connection, online],
+    [user, connection, online, partnerId, profile?.display_name],
   );
 
-  // Initialize native lock-screen interactive notification actions
+  // Initialize native push and lock-screen interactive notification actions
   useEffect(() => {
-    initializeNotificationSystem(async (actionId) => {
+    initializeNotificationSystem(user?.id, async (actionId) => {
       if (actionId === 'reached_home') {
         await send({
           type: 'ARRIVED',
@@ -430,7 +436,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       }
     });
-  }, [send]);
+  }, [send, user?.id]);
 
   // ---- create connection
   const createConnection = useCallback<AppDataState['createConnection']>(async () => {

@@ -85,6 +85,18 @@ create table if not exists public.events (
   created_at timestamptz not null default now()
 );
 
+-- 6. PUSH SUBSCRIPTIONS (FOR BACKGROUND WEB & NATIVE PUSH)
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text,
+  auth text,
+  platform text not null default 'web',
+  updated_at timestamptz not null default now(),
+  unique(user_id, endpoint)
+);
+
 -- ==============================================================================
 -- PART 2: ENABLE ROW LEVEL SECURITY (RLS)
 -- ==============================================================================
@@ -94,6 +106,7 @@ alter table public.connections enable row level security;
 alter table public.places enable row level security;
 alter table public.quick_messages enable row level security;
 alter table public.events enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 -- ==============================================================================
 -- PART 3: ROW LEVEL SECURITY POLICIES (All tables now exist safely)
@@ -208,6 +221,23 @@ create policy "Allow updating events"
 
 create policy "Allow deleting events"
   on public.events for delete
+  using (true);
+
+-- Push subscriptions policies
+create policy "Allow reading push subscriptions"
+  on public.push_subscriptions for select
+  using (true);
+
+create policy "Allow inserting push subscriptions"
+  on public.push_subscriptions for insert
+  with check (true);
+
+create policy "Allow updating push subscriptions"
+  on public.push_subscriptions for update
+  using (true);
+
+create policy "Allow deleting push subscriptions"
+  on public.push_subscriptions for delete
   using (true);
 
 -- ==============================================================================

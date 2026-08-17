@@ -1,5 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from './supabase';
 
 export type NotifPermission = 'granted' | 'denied' | 'default' | 'unsupported';
 
@@ -11,8 +13,13 @@ export function notifSupported(): boolean {
 export async function requestNotifPermission(): Promise<NotifPermission> {
   if (Capacitor.isNativePlatform()) {
     try {
-      const res = await LocalNotifications.requestPermissions();
-      return res.display === 'granted' ? 'granted' : 'denied';
+      const pushRes = await PushNotifications.requestPermissions();
+      const localRes = await LocalNotifications.requestPermissions();
+      const isGranted = pushRes.receive === 'granted' || localRes.display === 'granted';
+      if (isGranted) {
+        await PushNotifications.register();
+      }
+      return isGranted ? 'granted' : 'denied';
     } catch {
       return 'denied';
     }
@@ -56,11 +63,44 @@ export interface LocalNotif {
   extra?: Record<string, unknown>;
 }
 
-// Initialize native Android channels and lockscreen action types
+// Initialize native Android channels, push listeners, and lockscreen actions
 export async function initializeNotificationSystem(
+  userId?: string,
   onQuickAction?: (actionId: string) => void,
 ) {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform()) {
+    // On Web, register Web Push service worker
+    if (userId && typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub && Notification.permission === 'granted') {
+          // Subscribe to push manager
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
+          });
+        }
+        if (sub) {
+          const subJson = sub.toJSON();
+          await supabase.from('push_subscriptions').upsert(
+            {
+              user_id: userId,
+              endpoint: sub.endpoint,
+              p256dh: subJson.keys?.p256dh || null,
+              auth: subJson.keys?.auth || null,
+              platform: 'web',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,endpoint' },
+          );
+        }
+      } catch (e) {
+        console.warn('Web push registration notice:', e);
+      }
+    }
+    return;
+  }
 
   try {
     // 1. Create Android Notification Channels (Heads-up, vibration, high priority)
@@ -122,8 +162,36 @@ export async function initializeNotificationSystem(
         }
       },
     );
+
+    // 4. Register Native Android Push Notifications (FCM token management)
+    await PushNotifications.addListener('registration', async (token) => {
+      console.log('Push notification token received:', token.value);
+      if (userId && token.value) {
+        await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', userId);
+        await supabase.from('push_subscriptions').upsert(
+          {
+            user_id: userId,
+            endpoint: `native_android_${token.value}`,
+            platform: 'android',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,endpoint' },
+        );
+      }
+    });
+
+    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('Push notification received in foreground/background:', notification);
+      showLocalNotification({
+        title: notification.title || 'Aanya & Me ❤️',
+        body: notification.body || 'New message received!',
+        extra: notification.data,
+      });
+    });
+
+    await PushNotifications.register();
   } catch (err) {
-    console.warn('Failed to initialize native notifications:', err);
+    console.warn('Notification system init warning:', err);
   }
 }
 
@@ -161,8 +229,8 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
         await reg.showNotification(n.title, {
           body: n.body,
           tag: n.tag,
-          icon: '/icon.svg',
-          badge: '/icon.svg',
+          icon: '/icon-192.png',
+          badge: '/favicon.png',
           data: { url: n.url || '/' },
         } as NotificationOptions);
         return;
@@ -171,7 +239,7 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
       const notif = new Notification(n.title, {
         body: n.body,
         tag: n.tag,
-        icon: '/icon.svg',
+        icon: '/icon-192.png',
       });
       if (n.url) {
         notif.onclick = () => {
@@ -182,6 +250,37 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
     } catch {
       // ignore
     }
+  }
+}
+
+// Send push notification to partner when closed/inactive
+export async function dispatchPushToPartner(partnerId: string, title: string, body: string) {
+  try {
+    const { data: subs } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', partnerId);
+
+    if (!subs || subs.length === 0) return;
+
+    // Send payload to partner subscriptions
+    for (const sub of subs) {
+      if (sub.platform === 'web' && sub.endpoint) {
+        try {
+          // Trigger web push
+          fetch(sub.endpoint, {
+            method: 'POST',
+            body: JSON.stringify({ title, body }),
+            headers: { 'Content-Type': 'application/json' },
+            mode: 'no-cors',
+          }).catch(() => {});
+        } catch {
+          // ignore
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Push dispatch notice:', e);
   }
 }
 
