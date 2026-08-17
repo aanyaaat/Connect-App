@@ -690,11 +690,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const conn = existing as Connection | null;
     if (!conn) return { ok: false, error: 'No connection found for that code.' };
 
-    // If this device is already one of the participants (e.g. testing between mobile & browser)
+    // If this user is already one of the participants
     if (conn.user_a === user.id || conn.user_b === user.id) {
       setConnection(conn);
       localStorage.setItem('aanya_active_code', code);
       return { ok: true };
+    }
+
+    // Security Check: If the room is already taken by two other people, reject new profiles
+    if (conn.user_b && conn.user_a !== user.id && conn.user_b !== user.id) {
+      return { ok: false, error: 'This couple room is private and already occupied by two partners.' };
     }
 
     const { error } = await supabase

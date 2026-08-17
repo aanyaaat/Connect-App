@@ -31,6 +31,13 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
+function getNormalizedSlug(name: string): string {
+  const clean = name.toLowerCase().trim().replace(/[\s_\-.]+/g, '');
+  if (clean.startsWith('akh')) return 'akhil';
+  if (clean.startsWith('aany') || clean.startsWith('anya')) return 'aanya';
+  return clean.replace(/[^a-z0-9]/g, '').slice(0, 24) || 'user';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
@@ -95,12 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(CACHED_USER_KEY, JSON.stringify(data.session.user));
         await loadProfile(data.session.user.id);
       } else {
-        // Check if device already has a saved account
-        const devId = localStorage.getItem(DEVICE_ID_KEY);
+        // Auto-reconnect saved profile on same device/network
         const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
-        if (devId && savedName) {
-          const email = `device_${devId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}@aanya.app`;
-          const password = `pass_${devId.slice(0, 18)}`;
+        if (savedName) {
+          const slug = getNormalizedSlug(savedName);
+          const email = `partner_${slug}@aanya.app`;
+          const password = `aanya_pass_${slug}_2026!`;
           const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
           if (signInData.user) {
             setSession(signInData.session);
@@ -137,65 +144,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [initSession, loadProfile]);
 
-  // Instant 1-tap frictionless sign-in with display name (Bypasses email rate limits!)
+  // Deterministic 1-tap sign-in: Same name logs into same profile on any device (ZERO emails sent!)
   const startWithDisplayName = useCallback<AuthState['startWithDisplayName']>(async (name) => {
     const trimmed = name.trim() || 'You';
     localStorage.setItem(DISPLAY_NAME_KEY, trimmed);
-    const devId = getOrCreateDeviceId();
-    const email = `device_${devId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}@aanya.app`;
-    const password = `pass_${devId.slice(0, 18)}`;
+
+    const slug = getNormalizedSlug(trimmed);
+    const email = `partner_${slug}@aanya.app`;
+    const password = `aanya_pass_${slug}_2026!`;
 
     let userObj: User | null = null;
     let sessionObj: Session | null = null;
 
-    // 1. Try Anonymous sign in first (ZERO emails sent, ZERO rate limits!)
-    try {
-      const { data: anonRes } = await supabase.auth.signInAnonymously({
+    // 1. Try signing in directly to existing unified account
+    const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInErr && signInRes?.user) {
+      userObj = signInRes.user;
+      sessionObj = signInRes.session;
+    } else {
+      // 2. If account doesn't exist yet, create it once (bypasses email limits completely)
+      const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
           data: { name: trimmed },
         },
       });
-      if (anonRes?.user) {
-        userObj = anonRes.user;
-        sessionObj = anonRes.session;
-      }
-    } catch (e) {
-      // Anonymous provider might be disabled in dashboard, proceed to password fallback
-    }
 
-    // 2. If anonymous didn't return a user, try password sign-in (existing user)
-    if (!userObj) {
-      const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (!signInErr && signInRes?.user) {
-        userObj = signInRes.user;
-        sessionObj = signInRes.session;
-      } else {
-        // 3. Try sign up
-        const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { name: trimmed },
-          },
-        });
-
-        if (signUpErr) {
-          // If Supabase blocked email rate limit, guide user to enable Anonymous sign in
-          if (signUpErr.message.toLowerCase().includes('rate limit') || signUpErr.message.toLowerCase().includes('email')) {
-            return {
-              error: 'Supabase email rate limit reached. In Supabase Dashboard -> Authentication -> Providers -> Anonymous: Enable Anonymous Sign-ins (1 click, 100% free & unlimited!).',
-            };
-          }
-          return { error: signUpErr.message };
-        }
+      if (!signUpErr && signUpRes?.user) {
         userObj = signUpRes.user;
         sessionObj = signUpRes.session;
+      } else if (signUpErr) {
+        // Fallback: If signup reported existing user, try sign-in again
+        const { data: retryRes } = await supabase.auth.signInWithPassword({ email, password });
+        if (retryRes?.user) {
+          userObj = retryRes.user;
+          sessionObj = retryRes.session;
+        } else {
+          return { error: signUpErr.message };
+        }
       }
     }
 
     if (userObj) {
       setUser(userObj);
       setSession(sessionObj);
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(userObj));
       await supabase.from('profiles').upsert({
         id: userObj.id,
         display_name: trimmed,
