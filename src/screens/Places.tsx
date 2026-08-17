@@ -103,8 +103,8 @@ export function Places({ onBack }: { onBack: () => void }) {
         />
       )}
 
-      {/* Bottom spacer for floating navigation clearance */}
-      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
+      {/* Bottom spacer for floating navigation clearance on mobile */}
+      <div className="h-28 shrink-0 w-full md:hidden" aria-hidden="true" />
     </div>
   );
 }

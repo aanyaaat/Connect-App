@@ -81,17 +81,54 @@ function Router() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-bg">
+    <div className="relative min-h-screen bg-bg flex flex-col items-center">
+      {/* Desktop Top Header Navigation Bar (Visible on md and lg screens) */}
+      <header className="hidden md:flex w-full border-b border-border/70 bg-card/75 backdrop-blur-xl sticky top-0 z-40 justify-center">
+        <div className="w-full max-w-5xl flex items-center justify-between px-6 py-3.5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent text-white shadow-md shadow-accent/25 font-serif text-lg font-bold">
+              ❤️
+            </span>
+            <div>
+              <h1 className="text-xl font-serif font-bold text-fg leading-none">Aanya &amp; Me</h1>
+              <p className="text-[11px] text-muted font-medium mt-0.5">Private Couple Space</p>
+            </div>
+          </div>
+
+          {/* Desktop Navigation Tabs */}
+          <nav className="flex items-center gap-1.5 rounded-2xl bg-bg-elev/80 p-1.5 border border-border/80 shadow-inner">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = screen === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setScreen(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-95 ${
+                    isActive
+                      ? 'bg-card text-accent shadow-sm border border-border/60'
+                      : 'text-muted hover:text-fg hover:bg-card/40'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
+
       {/* Screen Render */}
-      <main>
+      <main className="w-full flex-1 flex flex-col items-center">
         {screen === 'home' && <Home onNavigate={(s) => setScreen(s)} />}
         {screen === 'history' && <History onBack={() => setScreen('home')} />}
         {screen === 'places' && <Places onBack={() => setScreen('home')} />}
         {screen === 'settings' && <Settings onBack={() => setScreen('home')} />}
       </main>
 
-      {/* Floating Bottom Navigation Bar */}
-      <nav className="bottom-nav flex items-center justify-around py-2 px-3">
+      {/* Mobile Floating Bottom Navigation Bar (Hidden on desktop md:) */}
+      <nav className="bottom-nav md:hidden flex items-center justify-around py-2 px-3">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = screen === item.id;

@@ -81,8 +81,8 @@ export function Settings({ onBack }: { onBack: () => void }) {
         })}
       </div>
 
-      {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button */}
-      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
+      {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button on mobile */}
+      <div className="h-28 shrink-0 w-full md:hidden" aria-hidden="true" />
 
       {section && <SettingsModal section={section} onClose={() => setSection(null)} />}
     </div>

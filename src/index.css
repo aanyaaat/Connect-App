@@ -74,15 +74,15 @@ body {
 
 @layer components {
   .app-shell {
-    @apply mx-auto flex min-h-screen w-full max-w-md flex-col;
+    @apply mx-auto flex min-h-screen w-full max-w-md md:max-w-4xl lg:max-w-5xl flex-col;
     min-height: 100dvh;
-    padding-top: max(env(safe-area-inset-top, 0px), 52px);
+    padding-top: max(env(safe-area-inset-top, 0px), 24px);
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 110px);
     position: relative;
     isolation: isolate;
     background:
-      radial-gradient(1000px 600px at 100% -10%, rgb(var(--accent-soft) / 0.55), transparent 65%),
-      radial-gradient(800px 500px at -10% 105%, rgb(var(--accent-soft) / 0.4), transparent 60%),
+      radial-gradient(1200px 700px at 85% -10%, rgb(var(--accent-soft) / 0.55), transparent 65%),
+      radial-gradient(1000px 600px at -10% 105%, rgb(var(--accent-soft) / 0.4), transparent 60%),
       rgb(var(--bg));
   }
 

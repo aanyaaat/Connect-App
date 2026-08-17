@@ -28,6 +28,8 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     partnerLastEvent,
     toggleKeepForever,
     createConnection,
+    joinConnection,
+    arrivalDiagnostics,
   } = useAppData();
   const { profile } = useAuth();
   const [toast, setToast] = useState<{ msg: string; tone?: 'default' | 'danger' | 'success' } | null>(null);
@@ -37,6 +39,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   const [heartPulsing, setHeartPulsing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [partnerCodeInput, setPartnerCodeInput] = useState('');
+  const [joiningCode, setJoiningCode] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const connected = connection?.status === 'accepted';
   const myName = profile?.display_name ?? 'You';
@@ -123,81 +128,114 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     setTimeout(() => setToast(null), 2500);
   }
 
+  async function handleDirectJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!partnerCodeInput.trim()) return;
+    setJoiningCode(true);
+    setJoinError(null);
+    const res = await joinConnection(partnerCodeInput);
+    setJoiningCode(false);
+    if (res.error) {
+      setJoinError(res.error);
+    } else {
+      setToast({ msg: 'Connected successfully! 🎉', tone: 'success' });
+      setTimeout(() => setToast(null), 2500);
+    }
+  }
+
   const recent = events.slice(0, 4);
 
   // Screen when Not Yet Connected with Partner
   if (!connected) {
     return (
-      <div className="app-shell px-5 py-6 flex flex-col justify-between">
-        {/* Header */}
-        <header className="flex items-center justify-between">
+      <div className="app-shell px-5 pt-8 pb-32 flex flex-col justify-between overflow-y-auto">
+        {/* Mobile / Desktop Header */}
+        <header className="flex items-center justify-between pt-2">
           <div>
             <p className="text-xs font-semibold text-accent uppercase tracking-wider">
               {greeting(myName)}
             </p>
-            <h1 className="text-2xl text-fg font-serif">Aanya &amp; Me</h1>
+            <h1 className="text-2xl md:text-3xl text-fg font-serif">Aanya &amp; Me</h1>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-xs text-accent font-semibold">
+          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft/80 border border-accent/20 px-3 py-1.5 text-xs text-accent font-semibold shadow-sm">
             <Radio className="h-3.5 w-3.5 animate-pulse" />
-            <span>Pairing</span>
+            <span>Waiting for Partner</span>
           </div>
         </header>
 
-        {/* Prominent Always-Visible Pairing Code Card */}
-        <div className="my-auto fade-up flex flex-col gap-4">
-          {activePairingCode ? (
-            <div className="card p-5 bg-gradient-to-br from-card via-card to-accent-soft/40 border-accent/30 text-center shadow-lg">
-              <span className="text-3xl mb-1 block">💌</span>
-              <h2 className="text-lg font-serif font-bold text-fg">Your Active Pairing Code</h2>
-              <p className="text-xs text-muted mt-0.5">
-                Share this code with Aanya to connect in real time:
+        {/* Responsive Desktop & Mobile 2-Column Pairing Grid */}
+        <div className="my-auto py-6 fade-up grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl w-full mx-auto">
+          {/* Card 1: Your Active Pairing Code */}
+          <div className="card p-6 md:p-7 bg-gradient-to-br from-card via-card to-accent-soft/40 border-accent/30 text-center shadow-xl flex flex-col justify-between">
+            <div>
+              <span className="text-4xl mb-2 block animate-bounce">💌</span>
+              <h2 className="text-xl font-serif font-bold text-fg">Your Pairing Code</h2>
+              <p className="text-xs text-muted mt-1">
+                Share this code with Aanya to link your accounts:
               </p>
 
-              <div className="my-4 rounded-2xl bg-accent-soft/70 border border-accent/30 p-3.5 flex items-center justify-center gap-3">
-                <span className="font-serif text-3xl font-bold tracking-widest text-accent select-all">
-                  {activePairingCode}
-                </span>
-                <button
-                  onClick={() => copyCode(activePairingCode)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-md active:scale-95 transition"
-                  aria-label="Copy Code"
-                >
-                  {copiedCode ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-xs text-muted font-medium">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Listening live for Aanya to join...</span>
-              </div>
+              {activePairingCode ? (
+                <div className="my-5 rounded-2xl bg-accent-soft/80 border border-accent/30 p-4 flex items-center justify-center gap-3 shadow-inner">
+                  <span className="font-serif text-3xl md:text-4xl font-bold tracking-widest text-accent select-all">
+                    {activePairingCode}
+                  </span>
+                  <button
+                    onClick={() => copyCode(activePairingCode)}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-md shadow-accent/30 active:scale-95 hover:scale-105 transition"
+                    aria-label="Copy Code"
+                  >
+                    {copiedCode ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                  </button>
+                </div>
+              ) : (
+                <div className="my-5">
+                  <Button onClick={handleGenerateCode} loading={generatingCode} className="w-full">
+                    <Plus className="h-4 w-4" />
+                    <span>Generate 6-Digit Code</span>
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="card p-5 text-center">
-              <span className="text-3xl mb-2 block">✨</span>
-              <h2 className="text-lg font-serif font-bold text-fg">No Pairing Code Active</h2>
-              <p className="text-xs text-muted mt-1 mb-4">
-                Generate a 6-digit code or enter your partner's code to connect.
+
+            <div className="flex items-center justify-center gap-2 text-xs text-muted font-medium pt-2 border-t border-border/60">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>WebSockets active · Listening live for partner</span>
+            </div>
+          </div>
+
+          {/* Card 2: Enter Partner's Code Directly */}
+          <div className="card p-6 md:p-7 bg-gradient-to-br from-card to-bg-elev border-border/80 flex flex-col justify-between shadow-xl">
+            <div>
+              <span className="text-4xl mb-2 block">✨</span>
+              <h2 className="text-xl font-serif font-bold text-fg">Enter Partner's Code</h2>
+              <p className="text-xs text-muted mt-1 mb-5">
+                Have Aanya's code? Enter it below to connect instantly:
               </p>
-              <Button onClick={handleGenerateCode} loading={generatingCode} className="w-full">
-                <Plus className="h-4 w-4" />
-                <span>Generate Pairing Code</span>
-              </Button>
-            </div>
-          )}
 
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onNavigate('settings')}
-              className="w-full"
-            >
-              Enter Aanya's Code in Settings &rarr;
-            </Button>
+              <form onSubmit={handleDirectJoin} className="flex flex-col gap-3">
+                <input
+                  className="input uppercase tracking-wider text-center font-serif text-lg font-bold py-3"
+                  placeholder="e.g. AANYA-7282"
+                  value={partnerCodeInput}
+                  onChange={(e) => setPartnerCodeInput(e.target.value)}
+                />
+                {joinError && (
+                  <p className="text-xs text-danger font-semibold text-center">{joinError}</p>
+                )}
+                <Button type="submit" loading={joiningCode} className="w-full">
+                  <span>Connect with Partner &rarr;</span>
+                </Button>
+              </form>
+            </div>
+
+            <p className="text-[11px] text-muted text-center pt-4 border-t border-border/60 mt-4">
+              Works across Android, iPhone, Mac, Windows &amp; Web 💖
+            </p>
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-muted pb-2">
-          Private, encrypted &amp; free forever for you two ❤️
+        <p className="text-center text-xs text-muted pb-2">
+          Private, end-to-end encrypted &amp; free forever for you two ❤️
         </p>
 
         {toast && <Toast message={toast.msg} tone={toast.tone} />}
@@ -205,22 +243,23 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     );
   }
 
-  // Screen when Connected
+  // Screen when Connected (Responsive Desktop + Mobile Grid)
   return (
-    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-5 overflow-y-auto">
+    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-6 overflow-y-auto">
       {/* Top Header */}
       <header className="flex items-center justify-between pt-2">
         <div>
           <p className="text-xs font-semibold text-accent uppercase tracking-wider">
             {greeting(myName)}
           </p>
-          <h1 className="text-2xl text-fg font-serif">Aanya &amp; Me</h1>
+          <h1 className="text-2xl md:text-3xl text-fg font-serif">Aanya &amp; Me</h1>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-3 py-1.5 shadow-sm text-xs font-medium">
+        <div className="flex items-center gap-2 rounded-full bg-card border border-border/80 px-4 py-2 shadow-sm text-xs font-medium">
           {online ? (
             <>
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-fg-soft font-semibold">{partnerName}</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-fg font-semibold">{partnerName}</span>
+              <span className="text-muted hidden sm:inline">· Connected</span>
             </>
           ) : (
             <>
@@ -231,134 +270,174 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
         </div>
       </header>
 
-      {/* Main Interactive Heartbeat Centerpiece */}
-      <section className="fade-up">
-        <div className="card p-5 relative overflow-hidden bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/20">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <span className="chip mb-2">
-                <Sparkles className="h-3 w-3" />
-                <span>Live Partner Status</span>
-              </span>
-              <h2 className="text-lg text-fg font-serif">
-                {partnerLastEvent ? partnerLastEvent.message : `Waiting for ${partnerName}'s update`}
-              </h2>
-              <p className="text-xs text-muted mt-1 font-medium">
-                {partnerLastEvent
-                  ? `${partnerLastEvent.emoji} ${formatRelative(partnerLastEvent.occurred_at)}`
-                  : 'Tap the big heart below to poke!'}
-              </p>
-            </div>
-            <div className="text-4xl select-none p-2">
-              {partnerLastEvent?.emoji ?? '🌸'}
-            </div>
-          </div>
-
-          {/* Big Poke / Send Heart Button */}
-          <div className="mt-5 pt-4 border-t border-border/60 flex items-center justify-between relative">
-            <p className="text-xs text-fg-soft font-medium">Send an instant heart poke:</p>
-            <div className="relative">
-              {/* Floating particles */}
-              {particles.map((p) => (
-                <div
-                  key={p.id}
-                  className="heart-particle text-2xl select-none"
-                  style={{
-                    left: '50%',
-                    top: '0%',
-                    ['--tx' as any]: `${p.x}px`,
-                    ['--rot' as any]: `${p.rot}deg`,
-                  }}
-                >
-                  💖
+      {/* Desktop Responsive Multi-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        {/* Main Column (7 cols on Desktop) */}
+        <div className="lg:col-span-7 flex flex-col gap-5">
+          {/* Main Interactive Heartbeat Centerpiece */}
+          <section className="fade-up">
+            <div className="card p-6 md:p-7 relative overflow-hidden bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/25 shadow-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <span className="chip mb-2.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Live Partner Status</span>
+                  </span>
+                  <h2 className="text-xl md:text-2xl text-fg font-serif">
+                    {partnerLastEvent ? partnerLastEvent.message : `Waiting for ${partnerName}'s update`}
+                  </h2>
+                  <p className="text-xs text-muted mt-1.5 font-medium">
+                    {partnerLastEvent
+                      ? `${partnerLastEvent.emoji} ${formatRelative(partnerLastEvent.occurred_at)}`
+                      : 'Tap the big heart below to poke!'}
+                  </p>
                 </div>
-              ))}
+                <div className="text-5xl select-none p-2">
+                  {partnerLastEvent?.emoji ?? '🌸'}
+                </div>
+              </div>
+
+              {/* Big Poke / Send Heart Button */}
+              <div className="mt-6 pt-5 border-t border-border/60 flex items-center justify-between relative">
+                <div>
+                  <p className="text-sm text-fg font-semibold">Send an instant heart poke:</p>
+                  <p className="text-xs text-muted">Vibrates {partnerName}'s phone in real-time</p>
+                </div>
+                <div className="relative">
+                  {/* Floating particles */}
+                  {particles.map((p) => (
+                    <div
+                      key={p.id}
+                      className="heart-particle text-3xl select-none"
+                      style={{
+                        left: '50%',
+                        top: '0%',
+                        ['--tx' as any]: `${p.x}px`,
+                        ['--rot' as any]: `${p.rot}deg`,
+                      }}
+                    >
+                      💖
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleSendLove}
+                    disabled={sendingType === 'LOVE'}
+                    className={`relative flex h-16 w-16 items-center justify-center rounded-3xl bg-accent text-white shadow-xl shadow-accent/35 transition-all duration-200 active:scale-90 hover:scale-105 ${
+                      heartPulsing ? 'scale-125' : ''
+                    }`}
+                    aria-label="Send love"
+                  >
+                    <Heart className="h-8 w-8 fill-white animate-pulse" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Quick Action Tiles (4 columns on Desktop md/lg!) */}
+          <section className="fade-up">
+            <p className="px-1 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
+              <span>Quick Messages</span>
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {actions.map((a) => {
+                const key = a.type + a.label;
+                const isSending = sendingType === key;
+                return (
+                  <button
+                    key={key}
+                    className="quick-tile"
+                    onClick={() => handleAction(a)}
+                    disabled={isSending}
+                  >
+                    <span className="emoji">{isSending ? '💌' : a.emoji}</span>
+                    <span className="text-xs font-semibold leading-tight text-fg-soft">{a.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Emergency SOS Bar */}
+          <section className="fade-up">
+            <SosButton
+              onSent={(offline) =>
+                setToast({
+                  msg: offline
+                    ? 'SOS saved offline. Waiting for connection.'
+                    : `🚨 SOS sent! ${partnerName} has been alerted with your location.`,
+                  tone: offline ? 'default' : 'danger',
+                })
+              }
+            />
+          </section>
+        </div>
+
+        {/* Right Sidebar Column (5 cols on Desktop) */}
+        <div className="lg:col-span-5 flex flex-col gap-5">
+          {/* Arrival Detection Status Banner */}
+          <div className="card p-5 bg-gradient-to-br from-card to-accent-soft/20 border-border/80">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`h-3 w-3 rounded-full ${
+                    arrivalDiagnostics.status === 'working'
+                      ? 'bg-emerald-500 animate-pulse'
+                      : arrivalDiagnostics.status === 'no-permission'
+                        ? 'bg-rose-500'
+                        : 'bg-amber-500'
+                  }`}
+                />
+                <p className="text-xs font-bold uppercase tracking-wider text-fg-soft">
+                  Geofence Auto-Arrival
+                </p>
+              </div>
               <button
-                onClick={handleSendLove}
-                disabled={sendingType === 'LOVE'}
-                className={`relative flex h-14 w-14 items-center justify-center rounded-3xl bg-accent text-white shadow-lg shadow-accent/35 transition-all duration-200 active:scale-90 hover:scale-105 ${
-                  heartPulsing ? 'scale-125' : ''
-                }`}
-                aria-label="Send love"
+                onClick={() => onNavigate('places')}
+                className="text-xs font-semibold text-accent hover:underline"
               >
-                <Heart className="h-7 w-7 fill-white animate-pulse" />
+                Manage &rarr;
               </button>
             </div>
+            <p className="mt-2 text-xs text-muted font-medium">{arrivalDiagnostics.detail}</p>
           </div>
+
+          {/* Recent Moments Journal */}
+          <section className="fade-up">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">Recent Moments</p>
+              {events.length > 0 && (
+                <button
+                  className="text-xs font-semibold text-accent hover:underline"
+                  onClick={() => onNavigate('history')}
+                >
+                  View all &rarr;
+                </button>
+              )}
+            </div>
+            {recent.length === 0 ? (
+              <div className="card p-6 text-center">
+                <span className="text-2xl mb-1 block">💌</span>
+                <p className="text-xs text-muted">No messages yet. Send a heart above to start ❤️</p>
+              </div>
+            ) : (
+              <div className="card divide-y divide-border/60 overflow-hidden shadow-sm">
+                {recent.map((e) => (
+                  <EventRow
+                    key={e.id}
+                    event={e}
+                    myId={profile?.id ?? ''}
+                    onShowLocation={(ev) => setShowLocationModal(ev)}
+                    onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-      </section>
+      </div>
 
-      {/* Quick Action Tiles */}
-      <section className="fade-up">
-        <p className="px-1 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
-          <span>Quick Messages</span>
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {actions.map((a) => {
-            const key = a.type + a.label;
-            const isSending = sendingType === key;
-            return (
-              <button
-                key={key}
-                className="quick-tile"
-                onClick={() => handleAction(a)}
-                disabled={isSending}
-              >
-                <span className="emoji">{isSending ? '💌' : a.emoji}</span>
-                <span className="text-xs font-semibold leading-tight text-fg-soft">{a.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Emergency SOS Bar */}
-      <section className="fade-up">
-        <SosButton
-          onSent={(offline) =>
-            setToast({
-              msg: offline
-                ? 'SOS saved offline. Waiting for connection.'
-                : `🚨 SOS sent! ${partnerName} has been alerted with your location.`,
-              tone: offline ? 'default' : 'danger',
-            })
-          }
-        />
-      </section>
-
-      {/* Recent Moments Journal */}
-      <section className="fade-up">
-        <div className="flex items-center justify-between px-1 pb-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Recent Moments</p>
-          {events.length > 0 && (
-            <button
-              className="text-xs font-semibold text-accent hover:underline"
-              onClick={() => onNavigate('history')}
-            >
-              View all moments &rarr;
-            </button>
-          )}
-        </div>
-        {recent.length === 0 ? (
-          <div className="card p-5 text-center">
-            <p className="text-xs text-muted">No messages yet. Send a heart above to start ❤️</p>
-          </div>
-        ) : (
-          <div className="card divide-y divide-border/60 overflow-hidden">
-            {recent.map((e) => (
-              <EventRow
-                key={e.id}
-                event={e}
-                myId={profile?.id ?? ''}
-                onShowLocation={(ev) => setShowLocationModal(ev)}
-                onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <p className="text-center text-[11px] text-muted pb-2">{rotatingMicrocopy()}</p>
+      <p className="text-center text-xs text-muted pb-2">{rotatingMicrocopy()}</p>
 
       {toast && <Toast message={toast.msg} tone={toast.tone} />}
       {showLocationModal && (
@@ -366,7 +445,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
       )}
 
       {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button */}
-      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
+      <div className="h-28 shrink-0 w-full md:hidden" aria-hidden="true" />
     </div>
   );
 }
