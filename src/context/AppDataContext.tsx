@@ -3,7 +3,7 @@ import { supabase, type AppEvent, type Connection, type Place, type QuickMessage
 import { useAuth } from './AuthContext';
 import { enqueue, loadQueue, removeFromQueue, saveQueue, type QueuedEvent } from '@/lib/queue';
 import { generatePairingCode } from '@/lib/format';
-import { showLocalNotification } from '@/lib/notifications';
+import { showLocalNotification, initializeNotificationSystem } from '@/lib/notifications';
 import { getCurrentPosition, watchPosition, type Coords } from '@/lib/location';
 import { evaluateArrival, loadArrivalStates, saveArrivalStates } from '@/lib/arrival';
 
@@ -376,6 +376,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     },
     [user, connection, online],
   );
+
+  // Initialize native lock-screen interactive notification actions
+  useEffect(() => {
+    initializeNotificationSystem(async (actionId) => {
+      if (actionId === 'reached_home') {
+        await send({
+          type: 'ARRIVED',
+          emoji: '🏠',
+          message: 'Reached Home safely ❤️',
+          attachLocation: true,
+        });
+      } else if (actionId === 'on_my_way') {
+        await send({
+          type: 'CUSTOM',
+          emoji: '🚗',
+          message: 'On my way to you!',
+          attachLocation: true,
+        });
+      } else if (actionId === 'send_love') {
+        await send({
+          type: 'THINKING',
+          emoji: '💖',
+          message: 'Thinking of you!',
+        });
+      }
+    });
+  }, [send]);
 
   // ---- create connection
   const createConnection = useCallback<AppDataState['createConnection']>(async () => {

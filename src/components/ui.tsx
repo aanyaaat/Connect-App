@@ -87,13 +87,13 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
         onClick={onClose}
         aria-hidden
       />
-      <div className="card relative z-10 m-0 w-full max-w-md max-h-[85vh] flex flex-col rounded-b-none p-5 pb-8 fade-up sm:m-4 sm:rounded-3xl shadow-2xl">
+      <div className="card relative z-10 m-0 w-full max-w-md max-h-[85vh] flex flex-col rounded-b-none p-5 pb-10 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border-t border-border/80">
         <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0">
           <h3 className="text-lg font-serif font-bold text-fg">{title ?? ''}</h3>
           <button
@@ -104,7 +104,7 @@ export function Modal({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1 flex flex-col gap-3">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1 flex flex-col gap-3 pb-6">
           {children}
         </div>
       </div>
