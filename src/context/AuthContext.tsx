@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [initSession, loadProfile]);
 
-  // Instant 1-tap frictionless sign-in with display name (No email confirmation needed!)
+  // Instant 1-tap frictionless sign-in with display name (Bypasses email rate limits!)
   const startWithDisplayName = useCallback<AuthState['startWithDisplayName']>(async (name) => {
     const trimmed = name.trim() || 'You';
     localStorage.setItem(DISPLAY_NAME_KEY, trimmed);
@@ -117,30 +117,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = `device_${devId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}@aanya.app`;
     const password = `pass_${devId.slice(0, 18)}`;
 
-    // Try signing in first
     let userObj: User | null = null;
     let sessionObj: Session | null = null;
 
-    const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (signInErr || !signInRes.user) {
-      // If not exists, sign up immediately
-      const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
+    // 1. Try Anonymous sign in first (ZERO emails sent, ZERO rate limits!)
+    try {
+      const { data: anonRes } = await supabase.auth.signInAnonymously({
         options: {
           data: { name: trimmed },
         },
       });
-
-      if (signUpErr) {
-        return { error: signUpErr.message };
+      if (anonRes?.user) {
+        userObj = anonRes.user;
+        sessionObj = anonRes.session;
       }
-      userObj = signUpRes.user;
-      sessionObj = signUpRes.session;
-    } else {
-      userObj = signInRes.user;
-      sessionObj = signInRes.session;
+    } catch (e) {
+      // Anonymous provider might be disabled in dashboard, proceed to password fallback
+    }
+
+    // 2. If anonymous didn't return a user, try password sign-in (existing user)
+    if (!userObj) {
+      const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (!signInErr && signInRes?.user) {
+        userObj = signInRes.user;
+        sessionObj = signInRes.session;
+      } else {
+        // 3. Try sign up
+        const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name: trimmed },
+          },
+        });
+
+        if (signUpErr) {
+          // If Supabase blocked email rate limit, guide user to enable Anonymous sign in
+          if (signUpErr.message.toLowerCase().includes('rate limit') || signUpErr.message.toLowerCase().includes('email')) {
+            return {
+              error: 'Supabase email rate limit reached. In Supabase Dashboard -> Authentication -> Providers -> Anonymous: Enable Anonymous Sign-ins (1 click, 100% free & unlimited!).',
+            };
+          }
+          return { error: signUpErr.message };
+        }
+        userObj = signUpRes.user;
+        sessionObj = signUpRes.session;
+      }
     }
 
     if (userObj) {
