@@ -13,7 +13,7 @@ export function Places({ onBack }: { onBack: () => void }) {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-4 overflow-y-auto">
+    <div className="app-shell px-5 pt-8 pb-44 flex flex-col gap-4">
       {/* Header */}
       <header className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-3">

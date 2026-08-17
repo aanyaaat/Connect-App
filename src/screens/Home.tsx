@@ -243,41 +243,61 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   }
 
   return (
-    <div className="app-shell px-5 pt-3 pb-32 flex flex-col gap-5 overflow-y-auto">
-      <header className="flex items-center justify-between pt-1">
-        <div>
-          <p className="text-xs font-semibold text-accent uppercase tracking-wider">
+    <div className="app-shell px-5 pt-3 pb-44 flex flex-col gap-5">
+      {/* Redesigned Responsive Header (Never truncates or overflows) */}
+      <header className="flex flex-col gap-1.5 pt-1">
+        {/* Top Info Bar: Greeting on Left, Battery & Live Indicator on Right */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-bold text-accent uppercase tracking-wider truncate">
             {greeting(myName)}
           </p>
-          <h1 className="text-2xl md:text-3xl text-fg font-serif">Aanya &amp; Me</h1>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {partnerProfile?.battery_level != null && (
-            <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-3 py-1.5 shadow-sm text-xs font-medium">
-              {partnerProfile.is_charging ? (
-                <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500 animate-pulse" />
-              ) : (
-                <Battery className="h-3.5 w-3.5 text-emerald-500" />
-              )}
-              <span className="text-fg font-semibold">{partnerProfile.battery_level}%</span>
-            </div>
-          )}
 
-          {/* Connection Status Badge clearly showing Partner's Name */}
-          <div className="flex items-center gap-2 rounded-2xl bg-card/95 border border-accent/40 px-3.5 py-1.5 shadow-md text-xs font-medium">
-            {online ? (
-              <>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-muted text-[11px] font-semibold uppercase tracking-wider">Partner:</span>
-                <span className="text-accent font-bold font-serif text-sm">{partnerName}</span>
-                <span className="text-emerald-400 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">LIVE</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3.5 w-3.5 text-muted" />
-                <span className="text-muted font-medium">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
-              </>
+          <div className="flex items-center gap-2 shrink-0">
+            {partnerProfile?.battery_level != null && (
+              <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-2.5 py-1 shadow-sm text-[11px] font-semibold">
+                {partnerProfile.is_charging ? (
+                  <Zap className="h-3 w-3 text-amber-500 fill-amber-500 animate-pulse" />
+                ) : (
+                  <Battery className="h-3 w-3 text-emerald-500" />
+                )}
+                <span className="text-fg">{partnerProfile.battery_level}%</span>
+              </div>
             )}
+
+            {/* Live Indicator Pill */}
+            <div className="flex items-center gap-1.5 rounded-full bg-card/95 border border-accent/40 px-2.5 py-1 shadow-sm text-[11px] font-semibold">
+              {online ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-emerald-400 font-bold">LIVE</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3 text-muted" />
+                  <span className="text-muted text-[10px]">OFFLINE</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Title & Partner Connection Banner */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl sm:text-3xl text-fg font-serif whitespace-nowrap">
+              Aanya &amp; Me
+            </h1>
+            <p className="text-xs text-muted font-medium flex items-center gap-1 mt-0.5">
+              {partnerName ? (
+                <>
+                  <span>Connected with</span>
+                  <span className="text-accent font-bold">{partnerName}</span>
+                  <span>❤️</span>
+                </>
+              ) : (
+                'Private Couple Space'
+              )}
+            </p>
           </div>
         </div>
       </header>

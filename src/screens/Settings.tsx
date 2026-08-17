@@ -44,7 +44,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-4 overflow-y-auto">
+    <div className="app-shell px-5 pt-8 pb-44 flex flex-col gap-4">
       <header className="flex items-center gap-3 pt-2">
         <button
           onClick={onBack}
