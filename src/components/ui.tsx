@@ -93,12 +93,13 @@ export function Modal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="card relative z-10 m-0 w-full max-w-md max-h-[92vh] flex flex-col rounded-b-none p-5 pb-16 sm:pb-6 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border-t border-border/80 bg-card">
-        <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0">
-          <div className="flex items-center gap-2">
+      <div className="card relative z-10 m-0 w-full max-w-md max-h-[92vh] flex flex-col rounded-b-none p-5 pb-16 sm:pb-6 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border border-border/80 bg-card">
+        {/* Sticky prominent top header on desktop and mobile */}
+        <div className="sticky top-0 z-30 flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0 bg-card">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 font-bold text-xs transition"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent text-white hover:bg-accent/90 active:scale-95 font-bold text-xs shadow-md transition cursor-pointer"
             >
               ← Back
             </button>
@@ -106,10 +107,10 @@ export function Modal({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-elev text-muted hover:text-fg hover:bg-accent-soft/50 transition"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/15 text-accent hover:bg-accent hover:text-white font-bold transition shadow-sm cursor-pointer"
             aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1 flex flex-col gap-3 pb-8">

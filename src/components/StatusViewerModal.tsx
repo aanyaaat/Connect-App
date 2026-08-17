@@ -65,19 +65,19 @@ export function StatusViewerModal({ isOpen, onClose, status }: StatusViewerModal
   return (
     <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-white animate-fade-in select-none">
       {/* Centered Story Card */}
-      <div className="w-full max-w-lg bg-[#140e1c] border border-white/15 rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl max-h-[92vh] overflow-y-auto">
-        {/* Top Bar with Time Left and Controls */}
-        <div className="w-full flex items-center justify-between pb-4 border-b border-white/10">
+      <div className="w-full max-w-lg bg-[#140e1c] border border-white/20 rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl max-h-[92vh] overflow-y-auto">
+        {/* Sticky Top Bar with Time Left and Controls */}
+        <div className="sticky top-0 z-30 w-full flex items-center justify-between pb-4 border-b border-white/15 bg-[#140e1c]">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all border border-white/10"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-rose-500/20 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-semibold text-rose-200">
+            <div className="flex items-center gap-1.5 bg-rose-500/20 border border-rose-500/40 px-3.5 py-1.5 rounded-full text-xs font-semibold text-rose-200">
               <Clock className="w-3.5 h-3.5 text-rose-400" />
               <span>{timeLeftMinutes}m left</span>
             </div>
@@ -85,7 +85,7 @@ export function StatusViewerModal({ isOpen, onClose, status }: StatusViewerModal
             {isMyStatus && (
               <button
                 onClick={handleDelete}
-                className="p-2 rounded-full bg-red-500/20 text-red-300 hover:bg-red-500/30 active:scale-95 border border-red-500/30"
+                className="p-2.5 rounded-full bg-red-500/30 text-red-200 hover:bg-red-500/50 active:scale-95 border border-red-500/40 transition-all cursor-pointer shadow-sm"
                 title="Delete Glance"
               >
                 <Trash2 className="w-4 h-4" />
@@ -95,7 +95,7 @@ export function StatusViewerModal({ isOpen, onClose, status }: StatusViewerModal
 
           <button
             onClick={onClose}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/10"
+            className="p-2.5 rounded-full bg-white/20 hover:bg-rose-500 active:scale-95 text-white transition-all shadow-md cursor-pointer"
             aria-label="Close"
           >
             <X className="w-4 h-4" />

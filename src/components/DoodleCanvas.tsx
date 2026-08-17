@@ -210,19 +210,19 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   return (
     <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-white animate-fade-in select-none">
       {/* Centered Modal Card */}
-      <div className="w-full max-w-xl bg-[#140e1c] border border-white/15 rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-2xl h-[92vh] overflow-hidden">
-        {/* Top Header */}
-        <div className="w-full flex items-center justify-between pb-3 border-b border-white/10">
+      <div className="w-full max-w-xl bg-[#140e1c] border border-white/20 rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-2xl h-[92vh] overflow-hidden">
+        {/* Sticky Top Header */}
+        <div className="sticky top-0 z-30 w-full flex items-center justify-between pb-3 border-b border-white/15 bg-[#140e1c]">
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all border border-white/10"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
             </button>
-            <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
-              <Pen className="w-3.5 h-3.5 text-rose-500" /> Live Doodle
+            <span className="text-xs font-bold tracking-wide uppercase text-rose-200 flex items-center gap-1 bg-rose-500/20 px-3 py-1 rounded-full border border-rose-500/30">
+              <Pen className="w-3.5 h-3.5 text-rose-400" /> Live Doodle
             </span>
             {partnerDrawing && (
               <span className="text-[11px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse flex items-center gap-1">
@@ -232,7 +232,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/10"
+            className="p-2 rounded-full bg-white/20 hover:bg-rose-500 active:scale-95 text-white shadow-md cursor-pointer transition-all"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
