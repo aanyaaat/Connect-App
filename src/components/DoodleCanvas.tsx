@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Pen, Trash2, Send, X, Palette, Undo, Sparkles } from 'lucide-react';
+import { Pen, Trash2, Send, X, Palette, Undo, Sparkles, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useAppData } from '@/context/AppDataContext';
@@ -29,6 +29,16 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   const [partnerDrawing, setPartnerDrawing] = useState(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const channelRef = useRef<any>(null);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Set up real-time bidirectional doodle channel
   useEffect(() => {
@@ -202,12 +212,18 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
       {/* Top Header */}
       <div className="w-full flex items-center justify-between pb-3">
         <div className="flex items-center gap-2">
-          <Pen className="w-5 h-5 text-rose-500" />
-          <span className="text-sm font-bold tracking-wide uppercase text-rose-300">
-            Live Doodle Canvas
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-xs transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back</span>
+          </button>
+          <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1">
+            <Pen className="w-3.5 h-3.5 text-rose-500" /> Doodle
           </span>
           {partnerDrawing && (
-            <span className="text-xs bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse flex items-center gap-1">
+            <span className="text-[11px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> {partnerName} is drawing...
             </span>
           )}
@@ -215,8 +231,9 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
         <button
           onClick={onClose}
           className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white"
+          aria-label="Close"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
