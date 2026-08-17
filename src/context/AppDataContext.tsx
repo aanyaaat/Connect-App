@@ -61,14 +61,28 @@ const uuid = () => crypto.randomUUID();
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, profile, refreshProfile } = useAuth();
-  const [connection, setConnection] = useState<Connection | null>(null);
+  const [connection, setConnection] = useState<Connection | null>(() => {
+    try {
+      const cached = localStorage.getItem('aanya_cached_connection');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [quickMessages, setQuickMessages] = useState<QuickMessage[]>([]);
   const [online, setOnline] = useState(navigator.onLine);
   const [queueCount, setQueueCount] = useState(0);
   const [sending, setSending] = useState(false);
-  const [partnerProfile, setPartnerProfile] = useState<{ id: string; display_name: string } | null>(null);
+  const [partnerProfile, setPartnerProfile] = useState<{ id: string; display_name: string } | null>(() => {
+    try {
+      const cached = localStorage.getItem('aanya_cached_partner_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [coords, setCoords] = useState<Coords | null>(null);
   const [retentionDays, setRetentionDaysState] = useState<number>(() => {
     const saved = localStorage.getItem('aanya_retention_days');
@@ -104,6 +118,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const loadConnection = useCallback(async () => {
     if (!user) {
       setConnection(null);
+      localStorage.removeItem('aanya_cached_connection');
       return;
     }
     const { data } = await supabase
@@ -115,9 +130,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (data) {
-      setConnection(data as Connection);
-      if (data.pairing_code) {
-        localStorage.setItem('aanya_active_code', data.pairing_code);
+      const conn = data as Connection;
+      setConnection(conn);
+      localStorage.setItem('aanya_cached_connection', JSON.stringify(conn));
+      if (conn.pairing_code) {
+        localStorage.setItem('aanya_active_code', conn.pairing_code);
       }
     }
   }, [user]);
@@ -151,6 +168,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const c = payload.new as Connection;
           if (c && (c.user_a === user.id || c.user_b === user.id)) {
             setConnection(c);
+            localStorage.setItem('aanya_cached_connection', JSON.stringify(c));
             if (c.pairing_code) localStorage.setItem('aanya_active_code', c.pairing_code);
           }
         },
@@ -170,6 +188,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!partnerId) {
       setPartnerProfile(null);
+      localStorage.removeItem('aanya_cached_partner_profile');
       return;
     }
     supabase
@@ -178,7 +197,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .eq('id', partnerId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setPartnerProfile(data as { id: string; display_name: string });
+        if (data) {
+          const p = data as { id: string; display_name: string };
+          setPartnerProfile(p);
+          localStorage.setItem('aanya_cached_partner_profile', JSON.stringify(p));
+        }
       });
   }, [partnerId]);
 
@@ -505,7 +528,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .eq('id', connection.id);
     if (error) return { ok: false, error: error.message };
     setConnection(null);
+    setPartnerProfile(null);
     setEvents([]);
+    localStorage.removeItem('aanya_cached_connection');
+    localStorage.removeItem('aanya_cached_partner_profile');
+    localStorage.removeItem('aanya_active_code');
     return { ok: true };
   }, [connection]);
 

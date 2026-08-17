@@ -1,5 +1,6 @@
 package com.aanya.connectapp;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -20,10 +21,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class HeartbeatService extends Service {
-    private static final String CHANNEL_ID = "aanya_love_channel";
+    public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
+    public static final String FOREGROUND_CHANNEL_ID = "aanya_status_channel";
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
     
+    public static volatile boolean isAppInForeground = false;
     private boolean isRunning = false;
     private String lastNotifiedEventId = "";
     private Handler handler;
@@ -32,8 +35,16 @@ public class HeartbeatService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
+        createNotificationChannels();
         handler = new Handler(Looper.getMainLooper());
+        
+        // Immediately start foreground notification to guarantee 24/7 keep-alive
+        try {
+            Notification fgNotif = buildForegroundNotification();
+            startForeground(1001, fgNotif);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -45,6 +56,29 @@ public class HeartbeatService extends Service {
         return START_STICKY;
     }
 
+    private Notification buildForegroundNotification() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
+
+        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+        String partnerName = prefs.getString("partner_name", "Aanya");
+
+        return new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Connected to " + partnerName + " ❤️")
+                .setContentText("Listening for live moments & messages 24/7")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setOngoing(true)
+                .setContentIntent(pi)
+                .build();
+    }
+
     private void startPollingDaemon() {
         checkRunnable = new Runnable() {
             @Override
@@ -53,7 +87,7 @@ public class HeartbeatService extends Service {
                     checkLatestEvent();
                 }).start();
                 if (isRunning) {
-                    handler.postDelayed(this, 4000); // Check every 4 seconds in background
+                    handler.postDelayed(this, 3000); // Check every 3 seconds in background
                 }
             }
         };
@@ -78,8 +112,8 @@ public class HeartbeatService extends Service {
             conn.setRequestProperty("apikey", SUPABASE_KEY);
             conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
             conn.setRequestProperty("Accept", "application/json");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
 
             int code = conn.getResponseCode();
             if (code == 200) {
@@ -99,11 +133,14 @@ public class HeartbeatService extends Service {
                     String message = latest.optString("message", "");
                     String emoji = latest.optString("emoji", "❤️");
 
-                    // If it's a new event sent by the partner
+                    // Check if new event sent by the partner
                     if (!eventId.isEmpty() && !eventId.equals(lastNotifiedEventId) && !senderId.equals(myUserId)) {
                         if (!lastNotifiedEventId.isEmpty()) {
-                            // Only notify if we have established a baseline or new event arrives
-                            showSystemNotification(emoji + " " + partnerName, message);
+                            // If the app is currently in the foreground, WebSocket handles it.
+                            // Only pop heads-up notification if app is closed/backgrounded to prevent duplicate!
+                            if (!isAppInForeground) {
+                                showSystemNotification(emoji + " " + partnerName, message);
+                            }
                         }
                         lastNotifiedEventId = eventId;
                     } else if (lastNotifiedEventId.isEmpty() && !eventId.isEmpty()) {
@@ -129,7 +166,7 @@ public class HeartbeatService extends Service {
         }
         PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -144,19 +181,30 @@ public class HeartbeatService extends Service {
         nm.notify(notifId, builder.build());
     }
 
-    private void createNotificationChannel() {
+    private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Aanya & Me Love & Moments",
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription("Instant notifications when app is closed");
-            channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 250, 100, 250});
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
-                nm.createNotificationChannel(channel);
+                // 1. Alert Channel (Max Importance, Sound, Vibration)
+                NotificationChannel alertChannel = new NotificationChannel(
+                        ALERT_CHANNEL_ID,
+                        "Aanya & Me Love & Moments",
+                        NotificationManager.IMPORTANCE_HIGH
+                );
+                alertChannel.setDescription("Instant notifications when app is closed");
+                alertChannel.enableVibration(true);
+                alertChannel.setVibrationPattern(new long[]{0, 250, 100, 250});
+                nm.createNotificationChannel(alertChannel);
+
+                // 2. Silent Status Channel for 24/7 Foreground Connection
+                NotificationChannel statusChannel = new NotificationChannel(
+                        FOREGROUND_CHANNEL_ID,
+                        "Connection Keep-Alive Service",
+                        NotificationManager.IMPORTANCE_MIN
+                );
+                statusChannel.setDescription("Keeps connection alive 24/7 in background");
+                statusChannel.setShowBadge(false);
+                nm.createNotificationChannel(statusChannel);
             }
         }
     }

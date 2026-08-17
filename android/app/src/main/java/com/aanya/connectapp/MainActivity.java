@@ -2,9 +2,11 @@ package com.aanya.connectapp;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -15,8 +17,21 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        HeartbeatService.isAppInForeground = true;
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        HeartbeatService.isAppInForeground = false;
+    }
+
+    @Override
     public void onStart() {
         super.onStart();
+        HeartbeatService.isAppInForeground = true;
         try {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
@@ -40,7 +55,11 @@ public class MainActivity extends BridgeActivity {
     private void startBackgroundService() {
         try {
             Intent intent = new Intent(this, HeartbeatService.class);
-            startService(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent);
+            } else {
+                startService(intent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
