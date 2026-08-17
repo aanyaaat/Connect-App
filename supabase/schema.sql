@@ -22,8 +22,14 @@ create table if not exists public.profiles (
   theme text not null default 'system' check (theme in ('light', 'dark', 'system')),
   accent text not null default 'rose' check (accent in ('rose', 'burgundy', 'lavender', 'sage', 'amber', 'ocean')),
   location_mode text not null default 'arrival' check (location_mode in ('off', 'arrival', 'sos', 'live')),
+  battery_level integer,
+  is_charging boolean default false,
   created_at timestamptz not null default now()
 );
+
+-- Idempotent column migrations for existing databases
+alter table public.profiles add column if not exists battery_level integer;
+alter table public.profiles add column if not exists is_charging boolean default false;
 
 -- 2. CONNECTIONS
 create table if not exists public.connections (

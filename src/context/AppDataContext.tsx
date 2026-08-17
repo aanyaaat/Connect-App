@@ -6,6 +6,7 @@ import { generatePairingCode } from '@/lib/format';
 import { showLocalNotification, initializeNotificationSystem, dispatchPushToPartner } from '@/lib/notifications';
 import { getCurrentPosition, watchPosition, type Coords } from '@/lib/location';
 import { evaluateArrival, loadArrivalStates, saveArrivalStates } from '@/lib/arrival';
+import { initBatteryMonitoring } from '@/lib/battery';
 
 interface SendInput {
   type: EventType;
@@ -19,6 +20,7 @@ interface AppDataState {
   connection: Connection | null;
   partnerId: string | null;
   partnerName: string;
+  partnerProfile: { id: string; display_name: string; battery_level?: number | null; is_charging?: boolean | null } | null;
   events: AppEvent[];
   places: Place[];
   quickMessages: QuickMessage[];
@@ -42,6 +44,7 @@ interface AppDataState {
   deleteQuickMessage: (id: string) => Promise<{ ok: boolean; error?: string }>;
   reorderQuickMessages: (orderedIds: string[]) => Promise<void>;
   ackEvent: (id: string) => Promise<void>;
+  deleteEvent: (id: string) => Promise<{ ok: boolean; error?: string }>;
   toggleKeepForever: (id: string) => Promise<void>;
   cleanupOldEvents: (daysToKeep?: number) => Promise<{ count: number; error?: string }>;
   retentionDays: number;
@@ -184,25 +187,56 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, [user, loadConnection]);
 
-  // ---- load partner profile
+  interface PartnerProfile {
+    id: string;
+    display_name: string;
+    battery_level?: number | null;
+    is_charging?: boolean | null;
+  }
+
+  // ---- load partner profile & live battery updates
   useEffect(() => {
     if (!partnerId) {
       setPartnerProfile(null);
       localStorage.removeItem('aanya_cached_partner_profile');
       return;
     }
-    supabase
-      .from('profiles')
-      .select('id, display_name')
-      .eq('id', partnerId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const p = data as { id: string; display_name: string };
-          setPartnerProfile(p);
-          localStorage.setItem('aanya_cached_partner_profile', JSON.stringify(p));
-        }
-      });
+    const fetchPartner = () => {
+      supabase
+        .from('profiles')
+        .select('id, display_name, battery_level, is_charging')
+        .eq('id', partnerId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            const p = data as PartnerProfile;
+            setPartnerProfile(p);
+            localStorage.setItem('aanya_cached_partner_profile', JSON.stringify(p));
+          }
+        });
+    };
+
+    fetchPartner();
+
+    // Listen for live battery and profile changes
+    const profileChannel = supabase
+      .channel(`partner_profile_${partnerId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${partnerId}` },
+        (payload) => {
+          if (payload.new) {
+            const p = payload.new as PartnerProfile;
+            setPartnerProfile(p);
+            localStorage.setItem('aanya_cached_partner_profile', JSON.stringify(p));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
   }, [partnerId]);
 
   // ---- load events
@@ -595,6 +629,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     await supabase.from('events').update({ delivery_status: 'acked' }).eq('id', id);
   }, []);
 
+  // Automatic background battery monitoring
+  useEffect(() => {
+    const unsub = initBatteryMonitoring(user?.id);
+    return () => unsub();
+  }, [user?.id]);
+
+  const deleteEvent = useCallback<AppDataState['deleteEvent']>(async (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  }, []);
+
   const setRetentionDays = useCallback((days: number) => {
     setRetentionDaysState(days);
     localStorage.setItem('aanya_retention_days', String(days));
@@ -722,6 +771,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       connection,
       partnerId,
       partnerName,
+      partnerProfile,
       events,
       places,
       quickMessages,
@@ -745,6 +795,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteQuickMessage,
       reorderQuickMessages,
       ackEvent,
+      deleteEvent,
       toggleKeepForever,
       cleanupOldEvents,
       retentionDays,

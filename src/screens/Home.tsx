@@ -7,8 +7,10 @@ import { mapsLink } from '@/lib/location';
 import { Button, EmptyState, Modal, Toast } from '@/components/ui';
 import { SosButton } from '@/components/SosButton';
 import { EventRow } from '@/components/EventRow';
+import { HeartbeatTouch } from '@/components/HeartbeatTouch';
+import { DoodleCanvas } from '@/components/DoodleCanvas';
 import type { AppEvent, EventType } from '@/lib/supabase';
-import { Heart, Sparkles, Copy, Check, MapPin, Radio, WifiOff, Plus } from 'lucide-react';
+import { Heart, Sparkles, Copy, Check, MapPin, Radio, WifiOff, Plus, Activity, Pen, Battery, Zap } from 'lucide-react';
 
 interface Particle {
   id: number;
@@ -20,6 +22,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   const {
     connection,
     partnerName,
+    partnerProfile,
     events,
     quickMessages,
     online,
@@ -27,6 +30,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     send,
     partnerLastEvent,
     toggleKeepForever,
+    deleteEvent,
     createConnection,
     joinConnection,
     arrivalDiagnostics,
@@ -35,6 +39,8 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   const [toast, setToast] = useState<{ msg: string; tone?: 'default' | 'danger' | 'success' } | null>(null);
   const [sendingType, setSendingType] = useState<string | null>(null);
   const [showLocationModal, setShowLocationModal] = useState<AppEvent | null>(null);
+  const [showHeartbeatModal, setShowHeartbeatModal] = useState(false);
+  const [showDoodleModal, setShowDoodleModal] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [heartPulsing, setHeartPulsing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -98,21 +104,11 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     setSendingType(a.type + a.label);
     const res = await send({ type: a.type, message: a.message, emoji: a.emoji });
     setSendingType(null);
-    if (!res.ok) {
-      setToast({ msg: res.error ?? 'Something went wrong', tone: 'danger' });
-    } else if (res.offline) {
-      setToast({ msg: 'Saved offline. We will send this when reconnected. ❤️', tone: 'default' });
+    if (res.ok) {
+      setToast({ msg: `Sent "${a.label}" to ${partnerName}! ${a.emoji}`, tone: 'success' });
     } else {
-      setToast({ msg: `Sent to ${partnerName} ❤️`, tone: 'success' });
+      setToast({ msg: res.error ?? 'Failed to send', tone: 'danger' });
     }
-    setTimeout(() => setToast(null), 2500);
-  }
-
-  function copyCode(c: string) {
-    navigator.clipboard?.writeText(c);
-    setCopiedCode(true);
-    setToast({ msg: 'Pairing code copied to clipboard! 📋', tone: 'success' });
-    setTimeout(() => setCopiedCode(false), 2000);
     setTimeout(() => setToast(null), 2500);
   }
 
@@ -120,69 +116,78 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     setGeneratingCode(true);
     const res = await createConnection();
     setGeneratingCode(false);
-    if (res.error) {
-      setToast({ msg: res.error, tone: 'danger' });
-    } else if (res.code) {
-      setToast({ msg: `Generated code: ${res.code} 💌`, tone: 'success' });
+    if (res.code) {
+      setToast({ msg: `New pairing code generated: ${res.code}`, tone: 'success' });
+    } else {
+      setToast({ msg: res.error ?? 'Failed to create connection code.', tone: 'danger' });
     }
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
   }
 
   async function handleDirectJoin(e: React.FormEvent) {
     e.preventDefault();
-    if (!partnerCodeInput.trim()) return;
-    setJoiningCode(true);
+    if (!partnerCodeInput.trim()) {
+      setJoinError('Please enter a valid pairing code.');
+      return;
+    }
     setJoinError(null);
+    setJoiningCode(true);
     const res = await joinConnection(partnerCodeInput);
     setJoiningCode(false);
-    if (res.error) {
-      setJoinError(res.error);
+    if (res.ok) {
+      setToast({ msg: 'Connected successfully with your partner! ❤️', tone: 'success' });
     } else {
-      setToast({ msg: 'Connected successfully! 🎉', tone: 'success' });
-      setTimeout(() => setToast(null), 2500);
+      setJoinError(res.error ?? 'Invalid pairing code. Please double check.');
     }
+    setTimeout(() => setToast(null), 3000);
   }
 
-  const recent = events.slice(0, 4);
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setToast({ msg: 'Pairing code copied to clipboard!', tone: 'success' });
+    setTimeout(() => {
+      setCopiedCode(false);
+      setToast(null);
+    }, 2000);
+  };
 
-  // Screen when Not Yet Connected with Partner
+  const recent = events.slice(0, 5);
+
+  // Screen when Not Yet Connected (Onboarding Pairing Hub)
   if (!connected) {
     return (
-      <div className="app-shell px-5 pt-8 pb-32 flex flex-col justify-between overflow-y-auto">
-        {/* Mobile / Desktop Header */}
-        <header className="flex items-center justify-between pt-2">
-          <div>
-            <p className="text-xs font-semibold text-accent uppercase tracking-wider">
-              {greeting(myName)}
-            </p>
-            <h1 className="text-2xl md:text-3xl text-fg font-serif">Aanya &amp; Me</h1>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft/80 border border-accent/20 px-3 py-1.5 text-xs text-accent font-semibold shadow-sm">
-            <Radio className="h-3.5 w-3.5 animate-pulse" />
-            <span>Waiting for Partner</span>
-          </div>
+      <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-6 overflow-y-auto max-w-4xl mx-auto w-full">
+        <header className="text-center pt-2">
+          <p className="text-xs font-bold text-accent uppercase tracking-widest">
+            {greeting(myName)}
+          </p>
+          <h1 className="text-3xl md:text-4xl text-fg font-serif mt-1">Connect with Partner</h1>
+          <p className="text-xs text-muted mt-1.5 max-w-md mx-auto">
+            Pair your devices using your private 6-digit code.
+          </p>
         </header>
 
-        {/* Responsive Desktop & Mobile 2-Column Pairing Grid */}
-        <div className="my-auto py-6 fade-up grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl w-full mx-auto">
-          {/* Card 1: Your Active Pairing Code */}
-          <div className="card p-6 md:p-7 bg-gradient-to-br from-card via-card to-accent-soft/40 border-accent/30 text-center shadow-xl flex flex-col justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+          <div className="card p-6 md:p-7 bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/30 flex flex-col justify-between shadow-xl">
             <div>
-              <span className="text-4xl mb-2 block animate-bounce">💌</span>
+              <span className="chip mb-2">
+                <Radio className="h-3 w-3 text-accent animate-pulse" />
+                <span>Device Code</span>
+              </span>
               <h2 className="text-xl font-serif font-bold text-fg">Your Pairing Code</h2>
-              <p className="text-xs text-muted mt-1">
-                Share this code with Aanya to link your accounts:
+              <p className="text-xs text-muted mt-1 mb-4">
+                Share this code with Aanya to link your phones:
               </p>
 
               {activePairingCode ? (
-                <div className="my-5 rounded-2xl bg-accent-soft/80 border border-accent/30 p-4 flex items-center justify-center gap-3 shadow-inner">
-                  <span className="font-serif text-3xl md:text-4xl font-bold tracking-widest text-accent select-all">
+                <div className="my-5 flex items-center justify-between rounded-2xl bg-bg-elev p-4 border border-accent/40 shadow-inner">
+                  <span className="font-serif text-2xl md:text-3xl font-extrabold tracking-widest text-accent select-all">
                     {activePairingCode}
                   </span>
                   <button
                     onClick={() => copyCode(activePairingCode)}
                     className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-md shadow-accent/30 active:scale-95 hover:scale-105 transition"
-                    aria-label="Copy Code"
                   >
                     {copiedCode ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
                   </button>
@@ -191,25 +196,22 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
                 <div className="my-5">
                   <Button onClick={handleGenerateCode} loading={generatingCode} className="w-full">
                     <Plus className="h-4 w-4" />
-                    <span>Generate 6-Digit Code</span>
+                    <span>Generate Code</span>
                   </Button>
                 </div>
               )}
             </div>
-
-            <div className="flex items-center justify-center gap-2 text-xs text-muted font-medium pt-2 border-t border-border/60">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>WebSockets active · Listening live for partner</span>
-            </div>
           </div>
 
-          {/* Card 2: Enter Partner's Code Directly */}
           <div className="card p-6 md:p-7 bg-gradient-to-br from-card to-bg-elev border-border/80 flex flex-col justify-between shadow-xl">
             <div>
-              <span className="text-4xl mb-2 block">✨</span>
+              <span className="chip mb-2">
+                <Sparkles className="h-3 w-3 text-accent" />
+                <span>Join</span>
+              </span>
               <h2 className="text-xl font-serif font-bold text-fg">Enter Partner's Code</h2>
               <p className="text-xs text-muted mt-1 mb-5">
-                Have Aanya's code? Enter it below to connect instantly:
+                Have Aanya's code? Enter it below to connect:
               </p>
 
               <form onSubmit={handleDirectJoin} className="flex flex-col gap-3">
@@ -223,30 +225,19 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
                   <p className="text-xs text-danger font-semibold text-center">{joinError}</p>
                 )}
                 <Button type="submit" loading={joiningCode} className="w-full">
-                  <span>Connect with Partner &rarr;</span>
+                  <span>Connect Now &rarr;</span>
                 </Button>
               </form>
             </div>
-
-            <p className="text-[11px] text-muted text-center pt-4 border-t border-border/60 mt-4">
-              Works across Android, iPhone, Mac, Windows &amp; Web 💖
-            </p>
           </div>
         </div>
-
-        <p className="text-center text-xs text-muted pb-2">
-          Private, end-to-end encrypted &amp; free forever for you two ❤️
-        </p>
-
         {toast && <Toast message={toast.msg} tone={toast.tone} />}
       </div>
     );
   }
 
-  // Screen when Connected (Responsive Desktop + Mobile Grid)
   return (
     <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-6 overflow-y-auto">
-      {/* Top Header */}
       <header className="flex items-center justify-between pt-2">
         <div>
           <p className="text-xs font-semibold text-accent uppercase tracking-wider">
@@ -254,27 +245,64 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
           </p>
           <h1 className="text-2xl md:text-3xl text-fg font-serif">Aanya &amp; Me</h1>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-card border border-border/80 px-4 py-2 shadow-sm text-xs font-medium">
-          {online ? (
-            <>
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-fg font-semibold">{partnerName}</span>
-              <span className="text-muted hidden sm:inline">· Connected</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-3.5 w-3.5 text-muted" />
-              <span className="text-muted">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
-            </>
+        <div className="flex items-center gap-2.5">
+          {partnerProfile?.battery_level != null && (
+            <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-3 py-1.5 shadow-sm text-xs font-medium">
+              {partnerProfile.is_charging ? (
+                <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500 animate-pulse" />
+              ) : (
+                <Battery className="h-3.5 w-3.5 text-emerald-500" />
+              )}
+              <span className="text-fg font-semibold">{partnerProfile.battery_level}%</span>
+            </div>
           )}
+
+          <div className="flex items-center gap-2 rounded-full bg-card border border-border/80 px-3.5 py-1.5 shadow-sm text-xs font-medium">
+            {online ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-fg font-semibold">{partnerName}</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5 text-muted" />
+                <span className="text-muted">Offline {queueCount > 0 ? `(${queueCount})` : ''}</span>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Desktop Responsive Multi-Column Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => setShowHeartbeatModal(true)}
+          className="card p-4 bg-gradient-to-br from-rose-950/40 via-card to-card border-rose-500/30 hover:border-rose-500/60 active:scale-98 transition-all flex items-center gap-3 shadow-md group"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
+            <Activity className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="text-left">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-rose-300">Live Touch</h3>
+            <p className="text-[11px] text-muted font-medium">Apple Watch Haptics</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setShowDoodleModal(true)}
+          className="card p-4 bg-gradient-to-br from-purple-950/40 via-card to-card border-purple-500/30 hover:border-purple-500/60 active:scale-98 transition-all flex items-center gap-3 shadow-md group"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+            <Pen className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-purple-300">Live Doodle</h3>
+            <p className="text-[11px] text-muted font-medium">Real-Time Canvas</p>
+          </div>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        {/* Main Column (7 cols on Desktop) */}
         <div className="lg:col-span-7 flex flex-col gap-5">
-          {/* Main Interactive Heartbeat Centerpiece */}
           <section className="fade-up">
             <div className="card p-6 md:p-7 relative overflow-hidden bg-gradient-to-br from-card via-card to-accent-soft/30 border-accent/25 shadow-lg">
               <div className="flex items-start justify-between">
@@ -297,14 +325,12 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
                 </div>
               </div>
 
-              {/* Big Poke / Send Heart Button */}
               <div className="mt-6 pt-5 border-t border-border/60 flex items-center justify-between relative">
                 <div>
                   <p className="text-sm text-fg font-semibold">Send an instant heart poke:</p>
                   <p className="text-xs text-muted">Vibrates {partnerName}'s phone in real-time</p>
                 </div>
                 <div className="relative">
-                  {/* Floating particles */}
                   {particles.map((p) => (
                     <div
                       key={p.id}
@@ -334,7 +360,6 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
             </div>
           </section>
 
-          {/* Quick Action Tiles (4 columns on Desktop md/lg!) */}
           <section className="fade-up">
             <p className="px-1 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
               <span>Quick Messages</span>
@@ -358,7 +383,6 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
             </div>
           </section>
 
-          {/* Emergency SOS Bar */}
           <section className="fade-up">
             <SosButton
               onSent={(offline) =>
@@ -373,9 +397,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
           </section>
         </div>
 
-        {/* Right Sidebar Column (5 cols on Desktop) */}
         <div className="lg:col-span-5 flex flex-col gap-5">
-          {/* Arrival Detection Status Banner */}
           <div className="card p-5 bg-gradient-to-br from-card to-accent-soft/20 border-border/80">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -402,7 +424,6 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
             <p className="mt-2 text-xs text-muted font-medium">{arrivalDiagnostics.detail}</p>
           </div>
 
-          {/* Recent Moments Journal */}
           <section className="fade-up">
             <div className="flex items-center justify-between px-1 pb-2">
               <p className="text-xs font-bold uppercase tracking-wider text-muted">Recent Moments</p>
@@ -429,6 +450,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
                     myId={profile?.id ?? ''}
                     onShowLocation={(ev) => setShowLocationModal(ev)}
                     onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
+                    onDelete={(ev) => deleteEvent(ev.id)}
                   />
                 ))}
               </div>
@@ -443,8 +465,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
       {showLocationModal && (
         <LocationModal event={showLocationModal} onClose={() => setShowLocationModal(null)} />
       )}
+      <HeartbeatTouch isOpen={showHeartbeatModal} onClose={() => setShowHeartbeatModal(false)} />
+      <DoodleCanvas isOpen={showDoodleModal} onClose={() => setShowDoodleModal(false)} />
 
-      {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button */}
       <div className="h-28 shrink-0 w-full md:hidden" aria-hidden="true" />
     </div>
   );

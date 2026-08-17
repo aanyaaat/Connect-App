@@ -11,7 +11,7 @@ import { ArrowLeft, Clock, Star, MapPin } from 'lucide-react';
 type Filter = 'all' | 'messages' | 'locations' | 'saved' | 'sos';
 
 export function History({ onBack }: { onBack: () => void }) {
-  const { events, toggleKeepForever } = useAppData();
+  const { events, toggleKeepForever, deleteEvent } = useAppData();
   const { profile } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [showLocation, setShowLocation] = useState<AppEvent | null>(null);
@@ -103,6 +103,7 @@ export function History({ onBack }: { onBack: () => void }) {
                     myId={profile?.id ?? ''}
                     onShowLocation={(ev) => setShowLocation(ev)}
                     onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
+                    onDelete={(ev) => deleteEvent(ev.id)}
                   />
                 ))}
               </div>
