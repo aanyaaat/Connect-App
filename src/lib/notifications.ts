@@ -68,19 +68,22 @@ export async function initializeNotificationSystem(
       id: 'aanya_love_channel',
       name: 'Aanya & Me Love & Moments',
       description: 'Instant messages, pokes, and heart bursts',
-      importance: 5,
+      importance: 5, // MAX importance for instant heads-up popup
       visibility: 1, // Public on lockscreen
       vibration: true,
-      sound: 'res_custom_ringtone.mp3',
+      lights: true,
+      lightColor: '#f43f5e',
     });
 
     await LocalNotifications.createChannel({
       id: 'aanya_places_channel',
       name: 'Arrival & Location Suggestions',
       description: 'Geofenced arrival alerts and quick check-in suggestions',
-      importance: 4,
+      importance: 5,
       visibility: 1,
       vibration: true,
+      lights: true,
+      lightColor: '#f43f5e',
     });
 
     // 2. Register Lock Screen Interactive Action Buttons
@@ -138,7 +141,7 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
             channelId: n.isActionable ? 'aanya_places_channel' : 'aanya_love_channel',
             actionTypeId: n.isActionable ? 'LOCKSCREEN_ACTIONS' : undefined,
             extra: n.extra,
-            schedule: { at: new Date(Date.now() + 100) },
+            schedule: { at: new Date() }, // Instant trigger
             smallIcon: 'ic_stat_icon',
             iconColor: '#f43f5e',
           },
