@@ -150,9 +150,21 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
     }
   }
 
-  // Web Browser Notification Fallback
+  // Web Browser Notification Fallback (Via Service Worker for inactive/background tab delivery)
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(n.title, {
+          body: n.body,
+          tag: n.tag,
+          icon: '/icon.svg',
+          badge: '/icon.svg',
+          data: { url: n.url || '/' },
+        } as NotificationOptions);
+        return;
+      }
+
       const notif = new Notification(n.title, {
         body: n.body,
         tag: n.tag,
