@@ -243,9 +243,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   }
 
   return (
-    <div className="app-shell px-5 pt-3 pb-44 flex flex-col gap-5">
+    <div className="app-shell px-5 pt-4 pb-44 flex flex-col gap-5">
       {/* Redesigned Responsive Header (Never truncates or overflows) */}
-      <header className="flex flex-col gap-1.5 pt-1">
+      <header className="flex flex-col gap-1.5 pt-2">
         {/* Top Info Bar: Greeting on Left, Battery & Live Indicator on Right */}
         <div className="flex items-center justify-between gap-2">
           <p className="text-[11px] font-bold text-accent uppercase tracking-wider truncate">

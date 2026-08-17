@@ -76,7 +76,7 @@ body {
   .app-shell {
     @apply mx-auto flex min-h-screen w-full max-w-md md:max-w-4xl lg:max-w-5xl flex-col;
     min-height: 100dvh;
-    padding-top: max(env(safe-area-inset-top, 0px), 42px);
+    padding-top: max(env(safe-area-inset-top, 0px) + 18px, 56px);
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 110px);
     position: relative;
     isolation: isolate;
