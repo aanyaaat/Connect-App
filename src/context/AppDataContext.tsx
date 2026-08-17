@@ -126,6 +126,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     loadConnection();
   }, [user, loadConnection]);
 
+  // Sync config to Android Native 24/7 Background Heartbeat Service
+  useEffect(() => {
+    if (user?.id && connection?.id) {
+      try {
+        if (typeof (window as any).AndroidNativeConfig?.saveConfig === 'function') {
+          (window as any).AndroidNativeConfig.saveConfig(user.id, connection.id, partnerName);
+        }
+      } catch {
+        // ignore on web
+      }
+    }
+  }, [user?.id, connection?.id, partnerName]);
+
   // Pure WebSockets: Realtime bidirectional channel for instant sub-50ms connection updates
   useEffect(() => {
     if (!user) return;
