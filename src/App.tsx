@@ -21,7 +21,7 @@ function Router() {
     Boolean(localStorage.getItem('aanya_onboarded') === '1' || localStorage.getItem('aanya_saved_display_name') || localStorage.getItem('aanya_cached_user'))
   );
 
-  // Android Hardware Back Button Handler
+  // Universal Back Navigation (Hardware back button, Browser history, and Escape key)
   useEffect(() => {
     let backListener: any;
     try {
@@ -30,19 +30,32 @@ function Router() {
           if (current !== 'home') {
             return 'home';
           }
-          // If already on home, minimize/exit app
           CapApp.exitApp();
           return 'home';
         });
       });
     } catch (e) {
-      // Running on web/PWA where CapApp is a noop
+      // Running on web/PWA
     }
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setScreen((current) => (current !== 'home' ? 'home' : current));
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+
+    const handlePopState = () => {
+      setScreen('home');
+    };
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       if (backListener && typeof backListener.remove === 'function') {
         backListener.remove();
       }
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 

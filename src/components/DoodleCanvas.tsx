@@ -208,92 +208,102 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex flex-col justify-between pt-12 pb-8 px-5 text-white select-none">
-      {/* Top Header with Safe Area Space */}
-      <div className="w-full flex items-center justify-between pb-3">
-        <div className="flex items-center gap-2">
+    <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-white animate-fade-in select-none">
+      {/* Centered Modal Card */}
+      <div className="w-full max-w-xl bg-[#140e1c] border border-white/15 rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-2xl h-[92vh] overflow-hidden">
+        {/* Top Header */}
+        <div className="w-full flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all border border-white/10"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+            <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+              <Pen className="w-3.5 h-3.5 text-rose-500" /> Live Doodle
+            </span>
+            {partnerDrawing && (
+              <span className="text-[11px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> {partnerName} is drawing...
+              </span>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-xs transition-all border border-white/10"
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/10"
+            aria-label="Close"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back</span>
+            <X className="w-4 h-4" />
           </button>
-          <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
-            <Pen className="w-3.5 h-3.5 text-rose-500" /> Doodle
-          </span>
-          {partnerDrawing && (
-            <span className="text-[11px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> {partnerName} is drawing...
-            </span>
-          )}
-        </div>
-        <button
-          onClick={onClose}
-          className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/10"
-          aria-label="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Main Drawing Canvas */}
-      <div className="flex-1 w-full relative rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-[#0d0714] touch-none my-1">
-        <canvas
-          ref={canvasRef}
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerLeave={stopDrawing}
-          className="w-full h-full cursor-crosshair"
-        />
-      </div>
-
-      {/* Bottom Toolset with Safe Area Space */}
-      <div className="w-full flex flex-col gap-3.5 pt-3">
-        {/* Colors & Brush Size */}
-        <div className="flex items-center justify-between gap-2 overflow-x-auto py-1">
-          <div className="flex items-center gap-2.5">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`w-7 h-7 rounded-full transition-transform ${
-                  color === c ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-80 hover:opacity-100'
-                }`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
-          </div>
-
-          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/10">
-            {[2, 5, 10].map((s) => (
-              <button
-                key={s}
-                onClick={() => setLineWidth(s)}
-                className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold ${
-                  lineWidth === s ? 'bg-rose-500 text-white' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                {s === 2 ? 'S' : s === 5 ? 'M' : 'L'}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2.5">
+        {/* Main Drawing Canvas */}
+        <div className="flex-1 w-full relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-[#0d0714] touch-none my-2.5">
+          <canvas
+            ref={canvasRef}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerLeave={stopDrawing}
+            className="w-full h-full cursor-crosshair"
+          />
+        </div>
+
+        {/* Bottom Toolset */}
+        <div className="w-full flex flex-col gap-2.5 pt-2 border-t border-white/10">
+          {/* Colors & Brush Size */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto py-0.5">
+            <div className="flex items-center gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-transform ${
+                    color === c ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-80 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/10">
+              {[2, 5, 10].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setLineWidth(s)}
+                  className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg text-xs font-semibold ${
+                    lineWidth === s ? 'bg-rose-500 text-white' : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {s === 2 ? 'S' : s === 5 ? 'M' : 'L'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleClear}
+              className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 active:scale-98 rounded-2xl font-medium text-xs flex items-center justify-center gap-1.5 text-rose-300 transition-all border border-white/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Clear
+            </button>
+            <button
+              onClick={handleSendAsMoment}
+              className="flex-[2] py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-98 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-white shadow-lg shadow-rose-600/30 transition-all"
+            >
+              <Send className="w-3.5 h-3.5" /> Send to Timeline
+            </button>
+          </div>
+
           <button
-            onClick={handleClear}
-            className="flex-1 py-3 bg-white/10 hover:bg-white/15 active:scale-98 rounded-2xl font-medium text-xs flex items-center justify-center gap-1.5 text-rose-300 transition-all border border-white/10"
+            onClick={onClose}
+            className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-98 text-xs font-semibold text-white/70 flex items-center justify-center gap-1.5 transition-all"
           >
-            <Trash2 className="w-4 h-4" /> Clear
-          </button>
-          <button
-            onClick={handleSendAsMoment}
-            className="flex-[2] py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-98 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-white shadow-lg shadow-rose-600/30 transition-all"
-          >
-            <Send className="w-4 h-4" /> Send to Timeline
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to Main Screen
           </button>
         </div>
       </div>

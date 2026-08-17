@@ -87,7 +87,7 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[99999] flex items-end justify-center sm:items-center">
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity"
         onClick={onClose}
@@ -95,7 +95,15 @@ export function Modal({
       />
       <div className="card relative z-10 m-0 w-full max-w-md max-h-[92vh] flex flex-col rounded-b-none p-5 pb-16 sm:pb-6 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border-t border-border/80 bg-card">
         <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0">
-          <h3 className="text-lg font-serif font-bold text-fg">{title ?? ''}</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-accent/10 text-accent hover:bg-accent/20 font-bold text-xs transition"
+            >
+              ← Back
+            </button>
+            <h3 className="text-base font-serif font-bold text-fg">{title ?? ''}</h3>
+          </div>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-elev text-muted hover:text-fg hover:bg-accent-soft/50 transition"
