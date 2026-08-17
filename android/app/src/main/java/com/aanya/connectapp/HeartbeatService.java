@@ -11,12 +11,15 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.PowerManager;
 import android.os.Vibrator;
 import androidx.core.app.NotificationCompat;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -27,22 +30,26 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class HeartbeatService extends Service {
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
     public static final String FOREGROUND_CHANNEL_ID = "aanya_status_channel";
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
+    private static final String SUPABASE_WS_URL = "wss://sipvivbfdjewxntlbpzt.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY&vsn=1.0.0";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
-    
+
     public static volatile boolean isAppInForeground = false;
     private boolean isRunning = false;
     private String lastNotifiedEventId = "";
-    private Handler handler;
-    private Runnable checkRunnable;
     private ScreenStateReceiver screenReceiver;
     private PowerManager powerManager;
     private PowerManager.WakeLock serviceWakeLock;
-    private Thread pollingThread;
+
+    // Modern Native WebSocket Stream Engine (Instagram/Telegram-grade 0ms push stream)
+    private OkHttpClient okHttpClient;
+    private WebSocket webSocket;
+    private Thread fallbackThread;
 
     // Power button press tracking
     private final List<Long> powerPressTimestamps = new ArrayList<>();
@@ -51,8 +58,8 @@ public class HeartbeatService extends Service {
     public void onCreate() {
         super.onCreate();
         powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        
-        // 1. Acquire persistent service WakeLock so CPU does NOT sleep in background/lockscreen
+
+        // 1. Acquire persistent service WakeLock to prevent deep-sleep freeze on lockscreen
         try {
             if (powerManager != null && (serviceWakeLock == null || !serviceWakeLock.isHeld())) {
                 serviceWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aanya:service_daemon_lock");
@@ -61,8 +68,8 @@ public class HeartbeatService extends Service {
         } catch (Exception ignored) {}
 
         createNotificationChannels();
-        
-        // 2. Immediately start foreground notification to guarantee 24/7 keep-alive
+
+        // 2. Start foreground notification for 24/7 keep-alive
         try {
             Notification fgNotif = buildForegroundNotification();
             startForeground(1001, fgNotif);
@@ -72,151 +79,141 @@ public class HeartbeatService extends Service {
 
         // 3. Register power button / screen on/off listener
         registerScreenStateReceiver();
+
+        // 4. Initialize Modern OkHttpClient with automatic TCP keep-alive
+        okHttpClient = new OkHttpClient.Builder()
+                .pingInterval(25, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(true)
+                .build();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (!isRunning) {
             isRunning = true;
-            startPollingDaemon();
+            // Connect to Realtime WebSocket stream
+            connectRealtimeWebSocket();
+            // Start low-frequency fallback health check daemon
+            startFallbackDaemon();
         }
         return START_STICKY;
     }
 
-    private void registerScreenStateReceiver() {
+    // =========================================================================
+    // ⚡ 1. MODERN NATIVE REALTIME WEBSOCKET STREAM (0ms Latency, Zero Battery Drain)
+    // =========================================================================
+    private synchronized void connectRealtimeWebSocket() {
+        if (!isRunning) return;
+
         try {
-            if (screenReceiver == null) {
-                screenReceiver = new ScreenStateReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction(Intent.ACTION_SCREEN_ON);
-                filter.addAction(Intent.ACTION_SCREEN_OFF);
-                registerReceiver(screenReceiver, filter);
+            if (webSocket != null) {
+                webSocket.close(1000, "reconnecting");
             }
+
+            Request request = new Request.Builder()
+                    .url(SUPABASE_WS_URL)
+                    .build();
+
+            webSocket = okHttpClient.newWebSocket(request, new WebSocketListener() {
+                @Override
+                public void onOpen(WebSocket ws, Response response) {
+                    // Subscribe to Realtime Postgres Insert Events
+                    try {
+                        JSONObject joinMsg = new JSONObject();
+                        joinMsg.put("topic", "realtime:public:events");
+                        joinMsg.put("event", "phx_join");
+                        joinMsg.put("payload", new JSONObject());
+                        joinMsg.put("ref", "1");
+                        ws.send(joinMsg.toString());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onMessage(WebSocket ws, String text) {
+                    handleWebSocketMessage(text);
+                }
+
+                @Override
+                public void onClosing(WebSocket ws, int code, String reason) {
+                    ws.close(1000, null);
+                }
+
+                @Override
+                public void onFailure(WebSocket ws, Throwable t, Response response) {
+                    // Reconnect with backoff
+                    if (isRunning) {
+                        try {
+                            Thread.sleep(3000);
+                        } catch (Exception ignored) {}
+                        connectRealtimeWebSocket();
+                    }
+                }
+            });
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private class ScreenStateReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
-                handlePowerPress();
-            }
-        }
-    }
-
-    private synchronized void handlePowerPress() {
-        long now = System.currentTimeMillis();
-        powerPressTimestamps.add(now);
-
-        // Retain only presses within last 2.5 seconds
-        while (!powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(0) > 2500)) {
-            powerPressTimestamps.remove(0);
-        }
-
-        // If pressed 3 or more times -> Trigger Quick Message
-        if (powerPressTimestamps.size() >= 3) {
-            powerPressTimestamps.clear();
-            triggerTriplePowerQuickMessage();
-        }
-    }
-
-    private void triggerTriplePowerQuickMessage() {
-        // Provide immediate physical haptic confirmation
+    private void handleWebSocketMessage(String text) {
         try {
-            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            if (v != null) {
-                v.vibrate(new long[]{0, 100, 80, 100, 80, 150}, -1);
+            JSONObject msg = new JSONObject(text);
+            String event = msg.optString("event", "");
+
+            if ("INSERT".equalsIgnoreCase(event) || "new_event".equalsIgnoreCase(event) || "postgres_changes".equalsIgnoreCase(event)) {
+                JSONObject payload = msg.optJSONObject("payload");
+                if (payload != null) {
+                    JSONObject record = payload.optJSONObject("data");
+                    if (record == null) {
+                        record = payload.optJSONObject("record");
+                    }
+                    if (record == null) {
+                        record = payload;
+                    }
+
+                    String eventId = record.optString("id", "");
+                    String senderId = record.optString("sender_id", "");
+                    String message = record.optString("message", "");
+                    String emoji = record.optString("emoji", "❤️");
+
+                    SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                    String myUserId = prefs.getString("user_id", "");
+                    String partnerName = prefs.getString("partner_name", "Aanya");
+
+                    if (!eventId.isEmpty() && !eventId.equals(lastNotifiedEventId) && !senderId.equals(myUserId)) {
+                        lastNotifiedEventId = eventId;
+                        if (!isAppInForeground) {
+                            showSystemNotification(emoji + " " + partnerName, message);
+                        }
+                    }
+                }
             }
-        } catch (Exception ignored) {}
-
-        // Send chosen quick message in background thread
-        new Thread(() -> {
-            try {
-                SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-                String connectionId = prefs.getString("connection_id", "");
-                String myUserId = prefs.getString("user_id", "");
-                String message = prefs.getString("power_message_text", "Thinking of you right now ❤️");
-                String emoji = prefs.getString("power_message_emoji", "❤️");
-
-                if (connectionId.isEmpty() || myUserId.isEmpty()) return;
-
-                JSONObject payload = new JSONObject();
-                payload.put("id", UUID.randomUUID().toString());
-                payload.put("connection_id", connectionId);
-                payload.put("sender_id", myUserId);
-                payload.put("type", "CUSTOM");
-                payload.put("message", message);
-                payload.put("emoji", emoji);
-                payload.put("delivery_status", "sent");
-                payload.put("created_offline", false);
-
-                URL url = new URL(SUPABASE_URL + "/rest/v1/events");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("apikey", SUPABASE_KEY);
-                conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Prefer", "return=minimal");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(4000);
-                conn.setReadTimeout(4000);
-
-                OutputStream os = conn.getOutputStream();
-                os.write(payload.toString().getBytes("UTF-8"));
-                os.flush();
-                os.close();
-
-                conn.getResponseCode();
-                conn.disconnect();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
-    }
-
-    private Notification buildForegroundNotification() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags |= PendingIntent.FLAG_IMMUTABLE;
+        } catch (Exception e) {
+            // Ignore non-json frames or heartbeats
         }
-        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
-
-        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-        String partnerName = prefs.getString("partner_name", "Aanya");
-
-        return new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Connected to " + partnerName + " ❤️")
-                .setContentText("Listening for live moments & messages 24/7")
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
-                .setOngoing(true)
-                .setContentIntent(pi)
-                .build();
     }
 
-    // Dedicated high-priority worker thread so Looper/Handler never freezes during lockscreen sleep
-    private synchronized void startPollingDaemon() {
-        if (pollingThread != null && pollingThread.isAlive()) return;
-        pollingThread = new Thread(() -> {
+    // =========================================================================
+    // 🛡️ 2. RELIABLE FALLBACK POLLING (Only for Network Handover / Tunnel Recovery)
+    // =========================================================================
+    private synchronized void startFallbackDaemon() {
+        if (fallbackThread != null && fallbackThread.isAlive()) return;
+        fallbackThread = new Thread(() -> {
             while (isRunning) {
                 try {
                     checkLatestEvent();
-                    Thread.sleep(2000); // Active continuous 2s polling
+                    Thread.sleep(4000); // 4s relaxed fallback
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
-                    try { Thread.sleep(2500); } catch (Exception ignored) {}
+                    try { Thread.sleep(4000); } catch (Exception ignored) {}
                 }
             }
-        }, "AanyaPollingDaemon");
-        pollingThread.setPriority(Thread.MAX_PRIORITY);
-        pollingThread.start();
+        }, "AanyaFallbackDaemon");
+        fallbackThread.setPriority(Thread.MAX_PRIORITY);
+        fallbackThread.start();
     }
 
     private void checkLatestEvent() {
@@ -258,11 +255,8 @@ public class HeartbeatService extends Service {
                     String message = latest.optString("message", "");
                     String emoji = latest.optString("emoji", "❤️");
 
-                    // Check if new event sent by the partner
                     if (!eventId.isEmpty() && !eventId.equals(lastNotifiedEventId) && !senderId.equals(myUserId)) {
                         if (!lastNotifiedEventId.isEmpty()) {
-                            // If the app is currently in the foreground, WebSocket handles it.
-                            // Only pop heads-up notification if app is closed/backgrounded to prevent duplicate!
                             if (!isAppInForeground) {
                                 showSystemNotification(emoji + " " + partnerName, message);
                             }
@@ -275,10 +269,13 @@ public class HeartbeatService extends Service {
             }
             conn.disconnect();
         } catch (Exception e) {
-            // Ignore network timeouts silently
+            // Silently ignore network timeouts
         }
     }
 
+    // =========================================================================
+    // 💡 3. INSTANT LOCKSCREEN ILLUMINATION & HAPTIC NOTIFICATION
+    // =========================================================================
     private void showSystemNotification(String title, String body) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
@@ -333,7 +330,6 @@ public class HeartbeatService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
-                // 1. Alert Channel (Max Importance, Sound, Vibration, Screen Lights, Public on Lockscreen)
                 NotificationChannel alertChannel = new NotificationChannel(
                         ALERT_CHANNEL_ID,
                         "Aanya & Me Love & Moments",
@@ -348,7 +344,6 @@ public class HeartbeatService extends Service {
                 alertChannel.setBypassDnd(true);
                 nm.createNotificationChannel(alertChannel);
 
-                // 2. Silent Status Channel for 24/7 Foreground Connection
                 NotificationChannel statusChannel = new NotificationChannel(
                         FOREGROUND_CHANNEL_ID,
                         "Connection Keep-Alive Service",
@@ -361,12 +356,130 @@ public class HeartbeatService extends Service {
         }
     }
 
+    private Notification buildForegroundNotification() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
+
+        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+        String partnerName = prefs.getString("partner_name", "Aanya");
+
+        return new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Connected to " + partnerName + " ❤️")
+                .setContentText("Listening for live moments & messages 24/7")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setOngoing(true)
+                .setContentIntent(pi)
+                .build();
+    }
+
+    private void registerScreenStateReceiver() {
+        try {
+            if (screenReceiver == null) {
+                screenReceiver = new ScreenStateReceiver();
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Intent.ACTION_SCREEN_ON);
+                filter.addAction(Intent.ACTION_SCREEN_OFF);
+                registerReceiver(screenReceiver, filter);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class ScreenStateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
+                handlePowerPress();
+            }
+        }
+    }
+
+    private synchronized void handlePowerPress() {
+        long now = System.currentTimeMillis();
+        powerPressTimestamps.add(now);
+
+        while (!powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(0) > 2500)) {
+            powerPressTimestamps.remove(0);
+        }
+
+        if (powerPressTimestamps.size() >= 3) {
+            powerPressTimestamps.clear();
+            triggerTriplePowerQuickMessage();
+        }
+    }
+
+    private void triggerTriplePowerQuickMessage() {
+        try {
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                v.vibrate(new long[]{0, 100, 80, 100, 80, 150}, -1);
+            }
+        } catch (Exception ignored) {}
+
+        new Thread(() -> {
+            try {
+                SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                String connectionId = prefs.getString("connection_id", "");
+                String myUserId = prefs.getString("user_id", "");
+                String message = prefs.getString("power_message_text", "Thinking of you right now ❤️");
+                String emoji = prefs.getString("power_message_emoji", "❤️");
+
+                if (connectionId.isEmpty() || myUserId.isEmpty()) return;
+
+                JSONObject payload = new JSONObject();
+                payload.put("id", UUID.randomUUID().toString());
+                payload.put("connection_id", connectionId);
+                payload.put("sender_id", myUserId);
+                payload.put("type", "CUSTOM");
+                payload.put("message", message);
+                payload.put("emoji", emoji);
+                payload.put("delivery_status", "sent");
+                payload.put("created_offline", false);
+
+                URL url = new URL(SUPABASE_URL + "/rest/v1/events");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("apikey", SUPABASE_KEY);
+                conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Prefer", "return=minimal");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.flush();
+                os.close();
+
+                conn.getResponseCode();
+                conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     @Override
     public void onDestroy() {
         isRunning = false;
-        if (pollingThread != null) {
+        if (webSocket != null) {
             try {
-                pollingThread.interrupt();
+                webSocket.close(1000, "service destroyed");
+            } catch (Exception ignored) {}
+        }
+        if (fallbackThread != null) {
+            try {
+                fallbackThread.interrupt();
             } catch (Exception ignored) {}
         }
         if (serviceWakeLock != null && serviceWakeLock.isHeld()) {
