@@ -50,6 +50,7 @@ public class HeartbeatService extends Service {
     private OkHttpClient okHttpClient;
     private WebSocket webSocket;
     private Thread fallbackThread;
+    private Thread heartbeatThread;
 
     // Power button press tracking
     private final List<Long> powerPressTimestamps = new ArrayList<>();
@@ -82,7 +83,7 @@ public class HeartbeatService extends Service {
 
         // 4. Initialize Modern OkHttpClient with automatic TCP keep-alive
         okHttpClient = new OkHttpClient.Builder()
-                .pingInterval(25, TimeUnit.SECONDS)
+                .pingInterval(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.MILLISECONDS)
                 .retryOnConnectionFailure(true)
                 .build();
@@ -94,7 +95,9 @@ public class HeartbeatService extends Service {
             isRunning = true;
             // Connect to Realtime WebSocket stream
             connectRealtimeWebSocket();
-            // Start low-frequency fallback health check daemon
+            // Start heartbeat ping thread
+            startHeartbeatPing();
+            // Start fast fallback health check daemon
             startFallbackDaemon();
         }
         return START_STICKY;
@@ -123,7 +126,20 @@ public class HeartbeatService extends Service {
                         JSONObject joinMsg = new JSONObject();
                         joinMsg.put("topic", "realtime:public:events");
                         joinMsg.put("event", "phx_join");
-                        joinMsg.put("payload", new JSONObject());
+                        
+                        JSONObject payload = new JSONObject();
+                        JSONObject config = new JSONObject();
+                        config.put("broadcast", new JSONObject().put("self", false));
+                        JSONArray pgChanges = new JSONArray();
+                        JSONObject changeRule = new JSONObject();
+                        changeRule.put("event", "INSERT");
+                        changeRule.put("schema", "public");
+                        changeRule.put("table", "events");
+                        pgChanges.put(changeRule);
+                        config.put("postgres_changes", pgChanges);
+                        payload.put("config", config);
+                        
+                        joinMsg.put("payload", payload);
                         joinMsg.put("ref", "1");
                         ws.send(joinMsg.toString());
                     } catch (Exception e) {
@@ -146,7 +162,7 @@ public class HeartbeatService extends Service {
                     // Reconnect with backoff
                     if (isRunning) {
                         try {
-                            Thread.sleep(3000);
+                            Thread.sleep(2500);
                         } catch (Exception ignored) {}
                         connectRealtimeWebSocket();
                     }
@@ -155,6 +171,28 @@ public class HeartbeatService extends Service {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private synchronized void startHeartbeatPing() {
+        if (heartbeatThread != null && heartbeatThread.isAlive()) return;
+        heartbeatThread = new Thread(() -> {
+            while (isRunning) {
+                try {
+                    Thread.sleep(20000); // 20s RFC WebSocket keep-alive
+                    if (webSocket != null) {
+                        JSONObject hb = new JSONObject();
+                        hb.put("topic", "phoenix");
+                        hb.put("event", "heartbeat");
+                        hb.put("payload", new JSONObject());
+                        hb.put("ref", "hb_" + System.currentTimeMillis());
+                        webSocket.send(hb.toString());
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception ignored) {}
+            }
+        }, "AanyaWebSocketHeartbeat");
+        heartbeatThread.start();
     }
 
     private void handleWebSocketMessage(String text) {
@@ -204,11 +242,11 @@ public class HeartbeatService extends Service {
             while (isRunning) {
                 try {
                     checkLatestEvent();
-                    Thread.sleep(4000); // 4s relaxed fallback
+                    Thread.sleep(2500); // 2.5s fast fallback
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
-                    try { Thread.sleep(4000); } catch (Exception ignored) {}
+                    try { Thread.sleep(3000); } catch (Exception ignored) {}
                 }
             }
         }, "AanyaFallbackDaemon");

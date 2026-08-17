@@ -213,6 +213,34 @@ function NotificationsSection() {
         </div>
       </div>
 
+      {/* ⚡ Unrestricted Battery Delivery (Instagram/WhatsApp style 0ms lockscreen) */}
+      <div className="card p-3.5 bg-gradient-to-br from-emerald-500/10 via-card to-card border border-emerald-500/30 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base">⚡</span>
+          <div>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Instant Lock-Screen Alerts (0ms)</p>
+            <p className="text-[11px] text-muted">Exempt from Android Doze battery sleep so notifications arrive instantly even when phone is locked</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            try {
+              if (typeof (window as any).AndroidNativeConfig?.requestBatteryOptimizationExemption === 'function') {
+                (window as any).AndroidNativeConfig.requestBatteryOptimizationExemption();
+              } else {
+                alert('Please allow "Unrestricted" battery usage in your phone Settings -> Apps -> Aanya & Me -> Battery.');
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+          className="w-full text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+        >
+          <span>🚀 Ensure Unrestricted Lock-Screen Delivery</span>
+        </Button>
+      </div>
+
       <div className="rounded-2xl bg-bg-elev p-3 border border-border/60 text-xs text-muted flex flex-col gap-1.5">
         <p className="font-semibold text-fg-soft flex items-center gap-1.5">
           <span>🔒</span> Lock-Screen Quick Actions:

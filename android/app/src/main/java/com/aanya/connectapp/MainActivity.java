@@ -1,9 +1,14 @@
 package com.aanya.connectapp;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.core.content.ContextCompat;
@@ -14,6 +19,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         startBackgroundService();
+        promptBatteryOptimizationExemption();
     }
 
     @Override
@@ -54,7 +60,40 @@ public class MainActivity extends BridgeActivity {
                                 .putString("power_message_emoji", emoji)
                                 .apply();
                     }
+
+                    @JavascriptInterface
+                    public boolean isBatteryOptimizationIgnored() {
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                                return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+                            }
+                        } catch (Exception ignored) {}
+                        return true;
+                    }
+
+                    @JavascriptInterface
+                    public void requestBatteryOptimizationExemption() {
+                        runOnUiThread(() -> promptBatteryOptimizationExemption());
+                    }
                 }, "AndroidNativeConfig");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SuppressLint("BatteryLife")
+    private void promptBatteryOptimizationExemption() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
