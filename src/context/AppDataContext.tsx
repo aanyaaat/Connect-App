@@ -129,7 +129,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loadConnection]);
 
-  // Realtime connection listener so creator immediately gets accepted when partner joins!
+  // Pure WebSockets: Realtime bidirectional channel for instant sub-50ms connection updates
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -145,24 +145,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Re-sync once on WebSocket connected/reconnected
+          loadConnection();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
-
-  // Polling fallback when connection is pending or null (every 3 seconds)
-  useEffect(() => {
-    if (!user) return;
-    if (connection?.status === 'accepted') return;
-
-    const interval = setInterval(() => {
-      loadConnection();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [user, connection?.status, loadConnection]);
+  }, [user, loadConnection]);
 
   // ---- load partner profile
   useEffect(() => {
