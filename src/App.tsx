@@ -93,7 +93,7 @@ function Router() {
   return (
     <div className="relative min-h-screen bg-bg flex flex-col items-center">
       {/* Desktop Top Header Navigation Bar (Visible on md and lg screens) */}
-      <header className="hidden md:flex w-full border-b border-border/70 bg-card/75 backdrop-blur-xl sticky top-0 z-40 justify-center">
+      <header className="hidden md:flex w-full border-b border-border/70 bg-card/75 backdrop-blur-xl sticky top-0 z-20 justify-center">
         <div className="w-full max-w-5xl flex items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent text-white shadow-md shadow-accent/25 font-serif text-lg font-bold">
@@ -139,7 +139,7 @@ function Router() {
       </header>
 
       {/* Screen Render */}
-      <main className="w-full flex-1 flex flex-col items-center">
+      <main className="w-full flex-1 flex flex-col items-center relative z-10">
         {screen === 'home' && <Home onNavigate={(s) => setScreen(s)} />}
         {screen === 'history' && <History onBack={() => setScreen('home')} />}
         {screen === 'places' && <Places onBack={() => setScreen('home')} />}

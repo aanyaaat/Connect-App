@@ -87,13 +87,13 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[99999] flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[999999] flex items-end justify-center sm:items-center p-0 pt-12 sm:p-6">
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity"
         onClick={onClose}
         aria-hidden
       />
-      <div className="card relative z-10 m-0 w-full max-w-md max-h-[92vh] flex flex-col rounded-b-none p-5 pb-16 sm:pb-6 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border border-border/80 bg-card">
+      <div className="card relative z-10 m-0 w-full max-w-md max-h-[85vh] flex flex-col rounded-b-none p-5 pb-16 sm:pb-6 fade-up sm:m-4 sm:rounded-3xl shadow-2xl border border-border/80 bg-card">
         {/* Sticky prominent top header on desktop and mobile */}
         <div className="sticky top-0 z-30 flex items-center justify-between pb-3 mb-2 border-b border-border/60 shrink-0 bg-card">
           <div className="flex items-center gap-2.5">

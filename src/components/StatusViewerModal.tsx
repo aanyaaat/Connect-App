@@ -63,9 +63,9 @@ export function StatusViewerModal({ isOpen, onClose, status }: StatusViewerModal
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-white animate-fade-in select-none">
+    <div className="fixed inset-0 z-[999999] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-3 pt-12 sm:p-6 text-white animate-fade-in select-none">
       {/* Centered Story Card */}
-      <div className="w-full max-w-lg bg-[#140e1c] border border-white/20 rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="w-full max-w-lg bg-[#140e1c] border border-white/20 rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl max-h-[85vh] overflow-y-auto">
         {/* Sticky Top Bar with Time Left and Controls */}
         <div className="sticky top-0 z-30 w-full flex items-center justify-between pb-4 border-b border-white/15 bg-[#140e1c]">
           <button
