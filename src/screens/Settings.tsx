@@ -41,8 +41,8 @@ export function Settings({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="app-shell px-5 py-6 flex flex-col gap-4">
-      <header className="flex items-center gap-2">
+    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-4 overflow-y-auto">
+      <header className="flex items-center gap-3 pt-2">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg shadow-sm active:scale-95 transition"
@@ -51,12 +51,12 @@ export function Settings({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl text-fg">Settings</h1>
+          <h1 className="text-2xl text-fg font-serif">Settings</h1>
           <p className="text-xs text-muted">Preferences &amp; customisation</p>
         </div>
       </header>
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 pb-6">
         {rows.map((r) => {
           const Icon = r.icon;
           return (
@@ -77,6 +77,9 @@ export function Settings({ onBack }: { onBack: () => void }) {
           );
         })}
       </div>
+
+      {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button */}
+      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
 
       {section && <SettingsModal section={section} onClose={() => setSection(null)} />}
     </div>

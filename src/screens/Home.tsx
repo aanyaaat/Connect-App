@@ -207,9 +207,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
 
   // Screen when Connected
   return (
-    <div className="app-shell px-5 py-6 flex flex-col gap-5">
+    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-5 overflow-y-auto">
       {/* Top Header */}
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between pt-2">
         <div>
           <p className="text-xs font-semibold text-accent uppercase tracking-wider">
             {greeting(myName)}
@@ -364,6 +364,9 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
       {showLocationModal && (
         <LocationModal event={showLocationModal} onClose={() => setShowLocationModal(null)} />
       )}
+
+      {/* Guaranteed Bottom Scroll Spacer so bottom nav never covers any button */}
+      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
     </div>
   );
 }

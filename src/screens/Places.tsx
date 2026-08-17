@@ -13,10 +13,10 @@ export function Places({ onBack }: { onBack: () => void }) {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="app-shell px-5 py-6 flex flex-col gap-4">
+    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-4 overflow-y-auto">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={onBack}
             className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg shadow-sm active:scale-95 transition"
@@ -25,7 +25,7 @@ export function Places({ onBack }: { onBack: () => void }) {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl text-fg">Saved Places</h1>
+            <h1 className="text-2xl text-fg font-serif">Saved Places</h1>
             <p className="text-xs text-muted">Geofenced arrival &amp; departure alerts</p>
           </div>
         </div>
@@ -58,7 +58,7 @@ export function Places({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Places List */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 pb-6">
         {places.length === 0 ? (
           <EmptyState
             icon="📍"
@@ -102,6 +102,9 @@ export function Places({ onBack }: { onBack: () => void }) {
           }
         />
       )}
+
+      {/* Bottom spacer for floating navigation clearance */}
+      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
     </div>
   );
 }

@@ -38,9 +38,9 @@ export function History({ onBack }: { onBack: () => void }) {
   }, [filtered]);
 
   return (
-    <div className="app-shell px-5 py-6 flex flex-col gap-4">
+    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-4 overflow-y-auto">
       {/* Header */}
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-3 pt-2">
         <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg shadow-sm active:scale-95 transition"
@@ -49,7 +49,7 @@ export function History({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl text-fg">Shared Moments</h1>
+          <h1 className="text-2xl text-fg font-serif">Shared Moments</h1>
           <p className="text-xs text-muted">Your memories and check-in timeline</p>
         </div>
       </header>
@@ -114,6 +114,9 @@ export function History({ onBack }: { onBack: () => void }) {
       {showLocation && (
         <LocationModal event={showLocation} onClose={() => setShowLocation(null)} />
       )}
+
+      {/* Bottom spacer for floating navigation clearance */}
+      <div className="h-28 shrink-0 w-full" aria-hidden="true" />
     </div>
   );
 }
