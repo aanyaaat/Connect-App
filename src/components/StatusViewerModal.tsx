@@ -63,7 +63,7 @@ export function StatusViewerModal({ isOpen, onClose, status }: StatusViewerModal
   };
 
   return (
-    <div className="fixed inset-0 z-[130] bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 text-white animate-fade-in select-none">
+    <div className="fixed inset-0 z-[130] bg-black/95 backdrop-blur-2xl flex flex-col justify-between pt-12 pb-8 px-5 text-white animate-fade-in select-none">
       {/* Top Bar with Time Left and Controls */}
       <div className="w-full flex items-center justify-between z-20">
         <button

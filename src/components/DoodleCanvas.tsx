@@ -208,18 +208,18 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-2xl flex flex-col justify-between p-4 text-white select-none">
-      {/* Top Header */}
+    <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex flex-col justify-between pt-12 pb-8 px-5 text-white select-none">
+      {/* Top Header with Safe Area Space */}
       <div className="w-full flex items-center justify-between pb-3">
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-xs transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-semibold text-xs transition-all border border-white/10"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back</span>
           </button>
-          <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1">
+          <span className="text-xs font-bold tracking-wide uppercase text-rose-300 flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
             <Pen className="w-3.5 h-3.5 text-rose-500" /> Doodle
           </span>
           {partnerDrawing && (
@@ -230,7 +230,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
         </div>
         <button
           onClick={onClose}
-          className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white"
+          className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/10"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
@@ -238,7 +238,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
       </div>
 
       {/* Main Drawing Canvas */}
-      <div className="flex-1 w-full relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-[#0f0a17] touch-none">
+      <div className="flex-1 w-full relative rounded-3xl overflow-hidden border border-white/15 shadow-2xl bg-[#0d0714] touch-none my-1">
         <canvas
           ref={canvasRef}
           onPointerDown={startDrawing}
@@ -249,11 +249,11 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
         />
       </div>
 
-      {/* Bottom Toolset */}
-      <div className="w-full flex flex-col gap-3 pt-3">
+      {/* Bottom Toolset with Safe Area Space */}
+      <div className="w-full flex flex-col gap-3.5 pt-3">
         {/* Colors & Brush Size */}
         <div className="flex items-center justify-between gap-2 overflow-x-auto py-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -266,7 +266,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/10">
             {[2, 5, 10].map((s) => (
               <button
                 key={s}
@@ -282,16 +282,16 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleClear}
-            className="flex-1 py-3 bg-white/10 hover:bg-white/15 active:scale-98 rounded-xl font-medium text-sm flex items-center justify-center gap-2 text-rose-300 transition-all"
+            className="flex-1 py-3 bg-white/10 hover:bg-white/15 active:scale-98 rounded-2xl font-medium text-xs flex items-center justify-center gap-1.5 text-rose-300 transition-all border border-white/10"
           >
-            <Trash2 className="w-4 h-4" /> Clear Canvas
+            <Trash2 className="w-4 h-4" /> Clear
           </button>
           <button
             onClick={handleSendAsMoment}
-            className="flex-[2] py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-98 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 text-white shadow-lg shadow-rose-600/30 transition-all"
+            className="flex-[2] py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 active:scale-98 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-white shadow-lg shadow-rose-600/30 transition-all"
           >
             <Send className="w-4 h-4" /> Send to Timeline
           </button>

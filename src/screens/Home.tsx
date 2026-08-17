@@ -243,8 +243,8 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   }
 
   return (
-    <div className="app-shell px-5 pt-8 pb-32 flex flex-col gap-6 overflow-y-auto">
-      <header className="flex items-center justify-between pt-2">
+    <div className="app-shell px-5 pt-3 pb-32 flex flex-col gap-5 overflow-y-auto">
+      <header className="flex items-center justify-between pt-1">
         <div>
           <p className="text-xs font-semibold text-accent uppercase tracking-wider">
             {greeting(myName)}

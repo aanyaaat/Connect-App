@@ -91,9 +91,9 @@ export function HeartbeatTouch({ isOpen, onClose }: HeartbeatTouchProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-between p-5 animate-fade-in text-white select-none">
+    <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-between pt-12 pb-8 px-5 animate-fade-in text-white select-none">
       {/* Top Header with Back Navigation */}
-      <div className="w-full flex items-center justify-between pt-2">
+      <div className="w-full flex items-center justify-between">
         <button
           onClick={onClose}
           className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white font-semibold text-xs"

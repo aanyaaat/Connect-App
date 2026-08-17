@@ -182,7 +182,7 @@ export function EphemeralStatusModal({ isOpen, onClose }: EphemeralStatusModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] bg-black/90 backdrop-blur-xl flex flex-col justify-between p-5 text-white animate-fade-in select-none">
+    <div className="fixed inset-0 z-[130] bg-black/95 backdrop-blur-xl flex flex-col justify-between pt-12 pb-8 px-5 text-white animate-fade-in select-none">
       {/* Top Header */}
       <div className="w-full flex items-center justify-between">
         <button
