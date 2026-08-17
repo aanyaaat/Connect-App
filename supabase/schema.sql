@@ -103,6 +103,19 @@ create table if not exists public.push_subscriptions (
   unique(user_id, endpoint)
 );
 
+-- Ephemeral Status (1-Hour Photo / Video / Voice)
+create table if not exists public.ephemeral_statuses (
+  id uuid primary key default gen_random_uuid(),
+  connection_id uuid not null references public.connections(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null check (type in ('PHOTO', 'VIDEO', 'VOICE')),
+  media_url text not null,
+  caption text,
+  duration integer default 0,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '1 hour')
+);
+
 -- ==============================================================================
 -- PART 2: ENABLE ROW LEVEL SECURITY (RLS)
 -- ==============================================================================
@@ -113,6 +126,7 @@ alter table public.places enable row level security;
 alter table public.quick_messages enable row level security;
 alter table public.events enable row level security;
 alter table public.push_subscriptions enable row level security;
+alter table public.ephemeral_statuses enable row level security;
 
 -- ==============================================================================
 -- PART 3: ROW LEVEL SECURITY POLICIES (All tables now exist safely)
@@ -270,6 +284,28 @@ create policy "Allow updating push subscriptions"
 
 create policy "Allow deleting push subscriptions"
   on public.push_subscriptions for delete
+  using (true);
+
+-- Ephemeral Status policies (1-Hour Live Glance)
+drop policy if exists "Allow reading ephemeral_statuses" on public.ephemeral_statuses;
+drop policy if exists "Allow inserting ephemeral_statuses" on public.ephemeral_statuses;
+drop policy if exists "Allow updating ephemeral_statuses" on public.ephemeral_statuses;
+drop policy if exists "Allow deleting ephemeral_statuses" on public.ephemeral_statuses;
+
+create policy "Allow reading ephemeral_statuses"
+  on public.ephemeral_statuses for select
+  using (true);
+
+create policy "Allow inserting ephemeral_statuses"
+  on public.ephemeral_statuses for insert
+  with check (true);
+
+create policy "Allow updating ephemeral_statuses"
+  on public.ephemeral_statuses for update
+  using (true);
+
+create policy "Allow deleting ephemeral_statuses"
+  on public.ephemeral_statuses for delete
   using (true);
 
 -- ==============================================================================

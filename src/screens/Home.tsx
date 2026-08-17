@@ -9,8 +9,10 @@ import { SosButton } from '@/components/SosButton';
 import { EventRow } from '@/components/EventRow';
 import { HeartbeatTouch } from '@/components/HeartbeatTouch';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
-import type { AppEvent, EventType } from '@/lib/supabase';
-import { Heart, Sparkles, Copy, Check, MapPin, Radio, WifiOff, Plus, Activity, Pen, Battery, Zap } from 'lucide-react';
+import { EphemeralStatusModal } from '@/components/EphemeralStatusModal';
+import { StatusViewerModal } from '@/components/StatusViewerModal';
+import type { AppEvent, EventType, EphemeralStatus } from '@/lib/supabase';
+import { Heart, Sparkles, Copy, Check, MapPin, Radio, WifiOff, Plus, Activity, Pen, Battery, Zap, Mic, Camera } from 'lucide-react';
 
 interface Particle {
   id: number;
@@ -29,6 +31,8 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     queueCount,
     send,
     partnerLastEvent,
+    partnerStatus,
+    myStatus,
     toggleKeepForever,
     deleteEvent,
     createConnection,
@@ -41,6 +45,8 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
   const [showLocationModal, setShowLocationModal] = useState<AppEvent | null>(null);
   const [showHeartbeatModal, setShowHeartbeatModal] = useState(false);
   const [showDoodleModal, setShowDoodleModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [viewingStatus, setViewingStatus] = useState<EphemeralStatus | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [heartPulsing, setHeartPulsing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -276,6 +282,87 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
         </div>
       </header>
 
+      {/* 1-Hour Live Glance Stories Row */}
+      <div className="flex items-center gap-3.5 py-2 px-1 overflow-x-auto no-scrollbar">
+        {/* Your Glance Bubble */}
+        <button
+          onClick={() => {
+            if (myStatus) {
+              setViewingStatus(myStatus);
+            } else {
+              setShowStatusModal(true);
+            }
+          }}
+          className="flex flex-col items-center gap-1.5 group shrink-0 active:scale-95 transition-transform"
+        >
+          <div
+            className={`relative w-15 h-15 rounded-full p-0.5 transition-all ${
+              myStatus
+                ? 'bg-gradient-to-tr from-rose-500 via-pink-500 to-purple-500 shadow-md shadow-rose-500/25 scale-105'
+                : 'border-2 border-dashed border-border/80 hover:border-accent'
+            }`}
+          >
+            <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center overflow-hidden">
+              {myStatus?.type === 'PHOTO' ? (
+                <img src={myStatus.media_url} alt="My status" className="w-full h-full object-cover" />
+              ) : myStatus?.type === 'VIDEO' ? (
+                <video src={myStatus.media_url} className="w-full h-full object-cover" />
+              ) : myStatus?.type === 'VOICE' ? (
+                <Mic className="w-6 h-6 text-pink-400 animate-pulse" />
+              ) : (
+                <Camera className="w-6 h-6 text-muted group-hover:text-accent transition-colors" />
+              )}
+            </div>
+            {!myStatus && (
+              <div className="absolute bottom-0 right-0 w-4.5 h-4.5 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold border-2 border-bg shadow-sm">
+                +
+              </div>
+            )}
+          </div>
+          <span className="text-[11px] font-semibold text-fg-soft max-w-[70px] truncate">
+            {myStatus ? 'Your Glance' : 'Add Glance'}
+          </span>
+        </button>
+
+        {/* Partner's Glance Bubble */}
+        <button
+          onClick={() => {
+            if (partnerStatus) {
+              setViewingStatus(partnerStatus);
+            }
+          }}
+          className={`flex flex-col items-center gap-1.5 group shrink-0 transition-transform ${
+            !partnerStatus ? 'opacity-50 cursor-default' : 'active:scale-95'
+          }`}
+        >
+          <div
+            className={`relative w-15 h-15 rounded-full p-0.5 transition-all ${
+              partnerStatus
+                ? 'bg-gradient-to-tr from-rose-500 via-purple-500 to-pink-500 shadow-lg shadow-pink-500/30 ring-2 ring-rose-400/60 animate-pulse scale-105'
+                : 'border border-border/60'
+            }`}
+          >
+            <div className="w-14 h-14 rounded-full bg-card flex items-center justify-center overflow-hidden">
+              {partnerStatus?.type === 'PHOTO' ? (
+                <img src={partnerStatus.media_url} alt="Partner status" className="w-full h-full object-cover" />
+              ) : partnerStatus?.type === 'VIDEO' ? (
+                <video src={partnerStatus.media_url} className="w-full h-full object-cover" />
+              ) : partnerStatus?.type === 'VOICE' ? (
+                <Mic className="w-6 h-6 text-rose-400 animate-pulse" />
+              ) : (
+                <span className="text-xl">❤️</span>
+              )}
+            </div>
+            {partnerStatus && (
+              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 border-2 border-bg animate-ping" />
+            )}
+          </div>
+          <span className="text-[11px] font-semibold text-fg-soft max-w-[75px] truncate">
+            {partnerStatus ? `${partnerName} · 1h` : `${partnerName}`}
+          </span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => setShowHeartbeatModal(true)}
@@ -470,6 +557,12 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
       )}
       <HeartbeatTouch isOpen={showHeartbeatModal} onClose={() => setShowHeartbeatModal(false)} />
       <DoodleCanvas isOpen={showDoodleModal} onClose={() => setShowDoodleModal(false)} />
+      <EphemeralStatusModal isOpen={showStatusModal} onClose={() => setShowStatusModal(false)} />
+      <StatusViewerModal
+        isOpen={Boolean(viewingStatus)}
+        status={viewingStatus}
+        onClose={() => setViewingStatus(null)}
+      />
 
       <div className="h-28 shrink-0 w-full md:hidden" aria-hidden="true" />
     </div>

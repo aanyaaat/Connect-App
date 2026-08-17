@@ -110,4 +110,16 @@ export interface AppEvent {
   created_at: string;
 }
 
+export interface EphemeralStatus {
+  id: string;
+  connection_id: string;
+  user_id: string;
+  type: 'PHOTO' | 'VIDEO' | 'VOICE';
+  media_url: string;
+  caption?: string | null;
+  duration?: number | null;
+  created_at: string;
+  expires_at: string;
+}
+
 export type AccentKey = 'rose' | 'burgundy' | 'lavender' | 'sage' | 'amber' | 'ocean';

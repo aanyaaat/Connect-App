@@ -5,20 +5,27 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Vibrator;
 import androidx.core.app.NotificationCompat;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class HeartbeatService extends Service {
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
@@ -31,6 +38,10 @@ public class HeartbeatService extends Service {
     private String lastNotifiedEventId = "";
     private Handler handler;
     private Runnable checkRunnable;
+    private ScreenStateReceiver screenReceiver;
+
+    // Power button press tracking
+    private final List<Long> powerPressTimestamps = new ArrayList<>();
 
     @Override
     public void onCreate() {
@@ -45,6 +56,9 @@ public class HeartbeatService extends Service {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // Register power button / screen on/off listener
+        registerScreenStateReceiver();
     }
 
     @Override
@@ -54,6 +68,100 @@ public class HeartbeatService extends Service {
             startPollingDaemon();
         }
         return START_STICKY;
+    }
+
+    private void registerScreenStateReceiver() {
+        try {
+            if (screenReceiver == null) {
+                screenReceiver = new ScreenStateReceiver();
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Intent.ACTION_SCREEN_ON);
+                filter.addAction(Intent.ACTION_SCREEN_OFF);
+                registerReceiver(screenReceiver, filter);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class ScreenStateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
+                handlePowerPress();
+            }
+        }
+    }
+
+    private synchronized void handlePowerPress() {
+        long now = System.currentTimeMillis();
+        powerPressTimestamps.add(now);
+
+        // Retain only presses within last 2.5 seconds
+        while (!powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(0) > 2500)) {
+            powerPressTimestamps.remove(0);
+        }
+
+        // If pressed 3 or more times -> Trigger Quick Message
+        if (powerPressTimestamps.size() >= 3) {
+            powerPressTimestamps.clear();
+            triggerTriplePowerQuickMessage();
+        }
+    }
+
+    private void triggerTriplePowerQuickMessage() {
+        // Provide immediate physical haptic confirmation
+        try {
+            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                v.vibrate(new long[]{0, 100, 80, 100, 80, 150}, -1);
+            }
+        } catch (Exception ignored) {}
+
+        // Send chosen quick message in background thread
+        new Thread(() -> {
+            try {
+                SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                String connectionId = prefs.getString("connection_id", "");
+                String myUserId = prefs.getString("user_id", "");
+                String message = prefs.getString("power_message_text", "Thinking of you right now ❤️");
+                String emoji = prefs.getString("power_message_emoji", "❤️");
+
+                if (connectionId.isEmpty() || myUserId.isEmpty()) return;
+
+                JSONObject payload = new JSONObject();
+                payload.put("id", UUID.randomUUID().toString());
+                payload.put("connection_id", connectionId);
+                payload.put("sender_id", myUserId);
+                payload.put("type", "CUSTOM");
+                payload.put("message", message);
+                payload.put("emoji", emoji);
+                payload.put("delivery_status", "sent");
+                payload.put("created_offline", false);
+
+                URL url = new URL(SUPABASE_URL + "/rest/v1/events");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("apikey", SUPABASE_KEY);
+                conn.setRequestProperty("Authorization", "Bearer " + SUPABASE_KEY);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Prefer", "return=minimal");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.flush();
+                os.close();
+
+                conn.getResponseCode();
+                conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     private Notification buildForegroundNotification() {
@@ -214,6 +322,11 @@ public class HeartbeatService extends Service {
         isRunning = false;
         if (handler != null && checkRunnable != null) {
             handler.removeCallbacks(checkRunnable);
+        }
+        if (screenReceiver != null) {
+            try {
+                unregisterReceiver(screenReceiver);
+            } catch (Exception ignored) {}
         }
         super.onDestroy();
     }

@@ -45,6 +45,15 @@ public class MainActivity extends BridgeActivity {
                                 .putString("partner_name", partnerName)
                                 .apply();
                     }
+
+                    @JavascriptInterface
+                    public void savePowerMessage(String text, String emoji) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit()
+                                .putString("power_message_text", text)
+                                .putString("power_message_emoji", emoji)
+                                .apply();
+                    }
                 }, "AndroidNativeConfig");
             }
         } catch (Exception e) {

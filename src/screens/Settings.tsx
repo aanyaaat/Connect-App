@@ -166,12 +166,60 @@ function NotificationsSection() {
         <span>{testSent ? 'Notification Sent! Check your status bar / screen ❤️' : 'Send Test Notification'}</span>
       </Button>
 
+      {/* 🔘 Triple Power Button Quick Message Configuration */}
+      <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🔘</span>
+          <div>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Triple Power Button Shortcut</p>
+            <p className="text-[11px] text-muted">Press phone's power button 3x to dispatch this message instantly</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5 mt-1">
+          {[
+            { emoji: '❤️', text: 'Thinking of you right now ❤️', label: 'Thinking of you' },
+            { emoji: '🏠', text: 'Reached Home safely ❤️', label: 'Reached Home' },
+            { emoji: '🚨', text: 'Emergency: Please call me back immediately! 🚨', label: 'Emergency Call Me' },
+            { emoji: '😴', text: 'Going to sleep now, sweet dreams ❤️', label: 'Going to Sleep' },
+          ].map((item) => {
+            const currentSelected = localStorage.getItem('aanya_power_message') || 'Thinking of you right now ❤️';
+            const isSelected = currentSelected === item.text;
+            return (
+              <button
+                key={item.text}
+                onClick={() => {
+                  localStorage.setItem('aanya_power_message', item.text);
+                  localStorage.setItem('aanya_power_emoji', item.emoji);
+                  try {
+                    if (typeof (window as any).AndroidNativeConfig?.savePowerMessage === 'function') {
+                      (window as any).AndroidNativeConfig.savePowerMessage(item.text, item.emoji);
+                    }
+                  } catch {}
+                  // Force re-render
+                  setTestSent(false);
+                }}
+                className={`flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                  isSelected
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'bg-card/70 hover:bg-card text-fg-soft border border-border/50'
+                }`}
+              >
+                <span>{item.emoji} {item.label}</span>
+                {isSelected && <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">ACTIVE</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="rounded-2xl bg-bg-elev p-3 border border-border/60 text-xs text-muted flex flex-col gap-1.5">
         <p className="font-semibold text-fg-soft flex items-center gap-1.5">
           <span>🔒</span> Lock-Screen Quick Actions:
         </p>
         <p>• 🏠 <strong>Reached Home</strong>: Send safe arrival update directly from your lock screen without opening the phone.</p>
-        <p>• 🚗 <strong>On My Way</strong>: Quick driving / transit update.</p>
+        <p>• 🎨 <strong>Doodle Canvas</strong>: Draw live shared love notes right from widget.</p>
+        <p>• 💓 <strong>Live Touch</strong>: Pulse Apple Watch style haptic vibrations directly to partner.</p>
         <p>• 💖 <strong>Send Love</strong>: Instant poke straight to your partner.</p>
       </div>
     </div>

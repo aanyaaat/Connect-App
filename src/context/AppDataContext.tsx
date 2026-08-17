@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { supabase, type AppEvent, type Connection, type Place, type QuickMessage, type EventType } from '@/lib/supabase';
+import { supabase, type AppEvent, type Connection, type Place, type QuickMessage, type EventType, type EphemeralStatus } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { enqueue, loadQueue, removeFromQueue, saveQueue, type QueuedEvent } from '@/lib/queue';
 import { generatePairingCode } from '@/lib/format';
@@ -24,6 +24,12 @@ interface AppDataState {
   events: AppEvent[];
   places: Place[];
   quickMessages: QuickMessage[];
+  ephemeralStatuses: EphemeralStatus[];
+  partnerStatus: EphemeralStatus | null;
+  myStatus: EphemeralStatus | null;
+  uploadEphemeralStatus: (type: 'PHOTO' | 'VIDEO' | 'VOICE', mediaUrl: string, caption?: string, duration?: number) => Promise<{ ok: boolean; error?: string }>;
+  deleteEphemeralStatus: (id: string) => Promise<void>;
+  refreshEphemeralStatuses: () => Promise<void>;
   online: boolean;
   queueCount: number;
   lastEvent: AppEvent | null;
@@ -286,6 +292,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setEvents((prev) => (prev.some((e) => e.id === ev.id) ? prev : [ev, ...prev]));
         triggerNotificationOnce(ev);
       })
+      .on('broadcast', { event: 'new_ephemeral_status' }, (payload) => {
+        const st = payload.payload as EphemeralStatus;
+        if (!st) return;
+        setEphemeralStatuses((prev) => [st, ...prev.filter((s) => s.user_id !== st.user_id)]);
+        if (st.user_id !== user?.id) {
+          showLocalNotification({
+            title: `${partnerName} posted a Glance ❤️`,
+            body: `Tap to view the 1-hour moment`,
+            tag: `status_${st.id}`,
+          });
+        }
+      })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'events', filter: `connection_id=eq.${connection.id}` },
@@ -303,6 +321,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           setEvents((prev) => prev.map((e) => (e.id === ev.id ? ev : e)));
         },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ephemeral_statuses', filter: `connection_id=eq.${connection.id}` },
+        () => {
+          refreshEphemeralStatuses();
+        },
+      )
       .subscribe();
 
     realtimeEventsChannelRef.current = channel;
@@ -312,6 +337,102 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [connection, user?.id, partnerName, triggerNotificationOnce]);
+
+  // ---- load ephemeral statuses
+  const [ephemeralStatuses, setEphemeralStatuses] = useState<EphemeralStatus[]>([]);
+
+  const refreshEphemeralStatuses = useCallback(async () => {
+    if (!connection || connection.status !== 'accepted') {
+      setEphemeralStatuses([]);
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase
+      .from('ephemeral_statuses')
+      .select('*')
+      .eq('connection_id', connection.id)
+      .gt('expires_at', nowIso)
+      .order('created_at', { ascending: false });
+    if (data) {
+      setEphemeralStatuses(data as EphemeralStatus[]);
+    }
+  }, [connection]);
+
+  useEffect(() => {
+    refreshEphemeralStatuses();
+  }, [refreshEphemeralStatuses]);
+
+  const uploadEphemeralStatus = useCallback(
+    async (type: 'PHOTO' | 'VIDEO' | 'VOICE', mediaUrl: string, caption?: string, duration?: number) => {
+      if (!user || !connection) return { ok: false, error: 'Not connected' };
+
+      // Ensure only 1 active status per user by deleting previous
+      await supabase.from('ephemeral_statuses').delete().eq('user_id', user.id).eq('connection_id', connection.id);
+
+      const newStatus = {
+        connection_id: connection.id,
+        user_id: user.id,
+        type,
+        media_url: mediaUrl,
+        caption: caption || null,
+        duration: duration || 0,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      };
+
+      const { data, error } = await supabase.from('ephemeral_statuses').insert(newStatus).select().single();
+      if (error) return { ok: false, error: error.message };
+
+      const created = data as EphemeralStatus;
+      setEphemeralStatuses((prev) => [created, ...prev.filter((s) => s.user_id !== user.id)]);
+
+      // Broadcast to partner over realtime
+      if (realtimeEventsChannelRef.current) {
+        realtimeEventsChannelRef.current.send({
+          type: 'broadcast',
+          event: 'new_ephemeral_status',
+          payload: created,
+        });
+      }
+
+      // Notify partner
+      if (partnerId) {
+        const myName = profile?.display_name || 'Your partner';
+        const typeLabel =
+          type === 'PHOTO'
+            ? 'a new photo glance 📸'
+            : type === 'VIDEO'
+            ? 'a 3-second live moment 🎥'
+            : 'a voice note 🎙️';
+        dispatchPushToPartner(
+          partnerId,
+          `${myName} posted a Glance ❤️`,
+          `${myName} shared ${typeLabel} (expires in 1h)`
+        );
+      }
+
+      return { ok: true };
+    },
+    [user, connection, partnerId, profile?.display_name],
+  );
+
+  const deleteEphemeralStatus = useCallback(async (id: string) => {
+    setEphemeralStatuses((prev) => prev.filter((s) => s.id !== id));
+    await supabase.from('ephemeral_statuses').delete().eq('id', id);
+  }, []);
+
+  const partnerStatus = useMemo(() => {
+    const now = new Date();
+    return (
+      ephemeralStatuses.find((s) => s.user_id === partnerId && new Date(s.expires_at) > now) ?? null
+    );
+  }, [ephemeralStatuses, partnerId]);
+
+  const myStatus = useMemo(() => {
+    const now = new Date();
+    return (
+      ephemeralStatuses.find((s) => s.user_id === user?.id && new Date(s.expires_at) > now) ?? null
+    );
+  }, [ephemeralStatuses, user?.id]);
 
   // ---- load places
   const refreshPlaces = useCallback(async () => {
@@ -775,6 +896,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       events,
       places,
       quickMessages,
+      ephemeralStatuses,
+      partnerStatus,
+      myStatus,
+      uploadEphemeralStatus,
+      deleteEphemeralStatus,
+      refreshEphemeralStatuses,
       online,
       queueCount,
       lastEvent,
@@ -804,10 +931,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       arrivalDiagnostics,
     }),
     [
-      connection, partnerId, partnerName, events, places, quickMessages, online, queueCount,
-      lastEvent, partnerLastEvent, myLastEvent, sending, send, createConnection, joinConnection,
-      disconnect, refreshPlaces, refreshQuickMessages, addPlace, updatePlace, deletePlace,
-      addQuickMessage, updateQuickMessage, deleteQuickMessage, reorderQuickMessages, ackEvent,
+      connection, partnerId, partnerName, partnerProfile, events, places, quickMessages,
+      ephemeralStatuses, partnerStatus, myStatus, uploadEphemeralStatus, deleteEphemeralStatus,
+      refreshEphemeralStatuses, online, queueCount, lastEvent, partnerLastEvent, myLastEvent,
+      sending, send, createConnection, joinConnection, disconnect, refreshPlaces,
+      refreshQuickMessages, addPlace, updatePlace, deletePlace, addQuickMessage,
+      updateQuickMessage, deleteQuickMessage, reorderQuickMessages, ackEvent, deleteEvent,
       toggleKeepForever, cleanupOldEvents, retentionDays, setRetentionDays, storageStats,
       arrivalDiagnostics,
     ],
