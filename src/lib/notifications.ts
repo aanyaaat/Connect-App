@@ -163,33 +163,35 @@ export async function initializeNotificationSystem(
       },
     );
 
-    // 4. Register Native Android Push Notifications (FCM token management)
-    await PushNotifications.addListener('registration', async (token) => {
-      console.log('Push notification token received:', token.value);
-      if (userId && token.value) {
-        await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', userId);
-        await supabase.from('push_subscriptions').upsert(
-          {
-            user_id: userId,
-            endpoint: `native_android_${token.value}`,
-            platform: 'android',
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,endpoint' },
-        );
-      }
-    });
-
-    await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('Push notification received in foreground/background:', notification);
-      showLocalNotification({
-        title: notification.title || 'Aanya & Me ❤️',
-        body: notification.body || 'New message received!',
-        extra: notification.data,
+    // 4. Register Native Android Push Notifications safely (FCM token management)
+    try {
+      await PushNotifications.addListener('registration', async (token) => {
+        if (userId && token?.value) {
+          await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', userId);
+          await supabase.from('push_subscriptions').upsert(
+            {
+              user_id: userId,
+              endpoint: `native_android_${token.value}`,
+              platform: 'android',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,endpoint' },
+          );
+        }
       });
-    });
 
-    await PushNotifications.register();
+      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        showLocalNotification({
+          title: notification.title || 'Aanya & Me ❤️',
+          body: notification.body || 'New message received!',
+          extra: notification.data,
+        });
+      });
+
+      await PushNotifications.register();
+    } catch (pushErr) {
+      console.warn('PushNotifications optional registration:', pushErr);
+    }
   } catch (err) {
     console.warn('Notification system init warning:', err);
   }
