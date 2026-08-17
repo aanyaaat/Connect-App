@@ -368,4 +368,10 @@ begin
   ) then
     alter publication supabase_realtime add table public.events;
   end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'ephemeral_statuses'
+  ) then
+    alter publication supabase_realtime add table public.ephemeral_statuses;
+  end if;
 end $$;

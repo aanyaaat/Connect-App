@@ -383,53 +383,74 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     async (type: 'PHOTO' | 'VIDEO' | 'VOICE', mediaUrl: string, caption?: string, duration?: number) => {
       if (!user || !connection) return { ok: false, error: 'Not connected' };
 
-      // Ensure only 1 active status per user by deleting previous
-      await supabase.from('ephemeral_statuses').delete().eq('user_id', user.id).eq('connection_id', connection.id);
+      try {
+        // Ensure only 1 active status per user by deleting previous
+        await supabase
+          .from('ephemeral_statuses')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('connection_id', connection.id);
 
-      const newStatus = {
-        connection_id: connection.id,
-        user_id: user.id,
-        type,
-        media_url: mediaUrl,
-        caption: caption || null,
-        duration: duration || 0,
-        expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      };
+        const newStatus = {
+          connection_id: connection.id,
+          user_id: user.id,
+          type,
+          media_url: mediaUrl,
+          caption: caption || null,
+          duration: duration || 0,
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        };
 
-      const { data, error } = await supabase.from('ephemeral_statuses').insert(newStatus).select().single();
-      if (error) return { ok: false, error: error.message };
+        const { data, error } = await supabase.from('ephemeral_statuses').insert(newStatus).select().single();
+        if (error) {
+          console.error('Error inserting ephemeral status:', error);
+          return { ok: false, error: error.message };
+        }
 
-      const created = data as EphemeralStatus;
-      setEphemeralStatuses((prev) => [created, ...prev.filter((s) => s.user_id !== user.id)]);
+        const created = data as EphemeralStatus;
+        setEphemeralStatuses((prev) => [created, ...prev.filter((s) => s.user_id !== user.id)]);
 
-      // Broadcast to partner over realtime
-      if (realtimeEventsChannelRef.current) {
-        realtimeEventsChannelRef.current.send({
-          type: 'broadcast',
-          event: 'new_ephemeral_status',
-          payload: created,
-        });
-      }
+        // Broadcast to partner over realtime channel for 0ms delivery
+        if (realtimeEventsChannelRef.current) {
+          realtimeEventsChannelRef.current.send({
+            type: 'broadcast',
+            event: 'new_ephemeral_status',
+            payload: created,
+          });
+        }
 
-      // Notify partner
-      if (partnerId) {
+        // Insert event row so Android Native HeartbeatService illuminates partner's locked screen!
         const myName = profile?.display_name || 'Your partner';
         const typeLabel =
           type === 'PHOTO'
-            ? 'a new photo glance 📸'
+            ? 'photo glance 📸'
             : type === 'VIDEO'
-            ? 'a 3-second live moment 🎥'
-            : 'a voice note 🎙️';
-        dispatchPushToPartner(
-          partnerId,
-          `${myName} posted a Glance ❤️`,
-          `${myName} shared ${typeLabel} (expires in 1h)`
-        );
-      }
+            ? '3s live video 🎥'
+            : 'voice note 🎙️';
 
-      return { ok: true };
+        await supabase
+          .from('events')
+          .insert({
+            id: uuid(),
+            connection_id: connection.id,
+            sender_id: user.id,
+            type: 'CUSTOM',
+            emoji: type === 'PHOTO' ? '📸' : type === 'VIDEO' ? '🎥' : '🎙️',
+            message: `${myName} posted a new 1-Hour Glance (${typeLabel})! Tap to view ❤️`,
+            occurred_at: new Date().toISOString(),
+            delivery_status: 'sent',
+            created_offline: false,
+            synced_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+
+        return { ok: true };
+      } catch (err: any) {
+        console.error('Failed to upload glance:', err);
+        return { ok: false, error: err?.message || 'Failed to upload glance' };
+      }
     },
-    [user, connection, partnerId, profile?.display_name],
+    [user, connection, profile?.display_name],
   );
 
   const deleteEphemeralStatus = useCallback(async (id: string) => {
@@ -438,18 +459,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const partnerStatus = useMemo(() => {
-    const now = new Date();
-    return (
-      ephemeralStatuses.find((s) => s.user_id === partnerId && new Date(s.expires_at) > now) ?? null
-    );
-  }, [ephemeralStatuses, partnerId]);
+    if (!user) return null;
+    return ephemeralStatuses.find((s) => s.user_id !== user.id) ?? null;
+  }, [ephemeralStatuses, user]);
 
   const myStatus = useMemo(() => {
-    const now = new Date();
-    return (
-      ephemeralStatuses.find((s) => s.user_id === user?.id && new Date(s.expires_at) > now) ?? null
-    );
-  }, [ephemeralStatuses, user?.id]);
+    if (!user) return null;
+    return ephemeralStatuses.find((s) => s.user_id === user.id) ?? null;
+  }, [ephemeralStatuses, user]);
 
   // ---- load places
   const refreshPlaces = useCallback(async () => {
