@@ -188,6 +188,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     loadEvents();
   }, [loadEvents]);
 
+  const notifiedEventIdsRef = useRef<Set<string>>(new Set());
+
+  const triggerNotificationOnce = useCallback((ev: AppEvent) => {
+    if (!ev || ev.sender_id === user?.id) return;
+    if (notifiedEventIdsRef.current.has(ev.id)) return;
+    notifiedEventIdsRef.current.add(ev.id);
+    showLocalNotification({
+      title: `${ev.emoji} ${partnerName}`,
+      body: ev.message,
+      tag: ev.id,
+    });
+  }, [user?.id, partnerName]);
+
   // ---- High-Speed Realtime: Instant WebSockets Broadcast (<30ms) + PostgreSQL WAL Persistence
   useEffect(() => {
     if (!connection || connection.status !== 'accepted') return;
@@ -201,13 +214,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const ev = payload.payload as AppEvent;
         if (!ev) return;
         setEvents((prev) => (prev.some((e) => e.id === ev.id) ? prev : [ev, ...prev]));
-        if (ev.sender_id !== user?.id) {
-          showLocalNotification({
-            title: `${ev.emoji} ${partnerName}`,
-            body: ev.message,
-            tag: ev.id,
-          });
-        }
+        triggerNotificationOnce(ev);
       })
       .on(
         'postgres_changes',
@@ -215,13 +222,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         (payload) => {
           const ev = payload.new as AppEvent;
           setEvents((prev) => (prev.some((e) => e.id === ev.id) ? prev : [ev, ...prev]));
-          if (ev.sender_id !== user?.id) {
-            showLocalNotification({
-              title: `${ev.emoji} ${partnerName}`,
-              body: ev.message,
-              tag: ev.id,
-            });
-          }
+          triggerNotificationOnce(ev);
         },
       )
       .on(
@@ -240,7 +241,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       realtimeEventsChannelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [connection, user?.id, partnerName]);
+  }, [connection, user?.id, partnerName, triggerNotificationOnce]);
 
   // ---- load places
   const refreshPlaces = useCallback(async () => {

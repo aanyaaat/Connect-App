@@ -14,8 +14,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: '💖 Aanya & Me',
     body: 'New message or moment shared!',
-    icon: '/icon.svg',
-    badge: '/icon.svg',
+    icon: '/icon-192.png',
+    badge: '/favicon.png',
     url: '/',
   };
 
@@ -31,8 +31,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icon.svg',
-    badge: data.badge || '/icon.svg',
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/favicon.png',
     vibrate: [200, 100, 200],
     data: {
       url: data.url || '/',
