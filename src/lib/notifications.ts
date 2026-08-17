@@ -1,5 +1,4 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase';
 
@@ -13,13 +12,8 @@ export function notifSupported(): boolean {
 export async function requestNotifPermission(): Promise<NotifPermission> {
   if (Capacitor.isNativePlatform()) {
     try {
-      const pushRes = await PushNotifications.requestPermissions();
       const localRes = await LocalNotifications.requestPermissions();
-      const isGranted = pushRes.receive === 'granted' || localRes.display === 'granted';
-      if (isGranted) {
-        await PushNotifications.register();
-      }
-      return isGranted ? 'granted' : 'denied';
+      return localRes.display === 'granted' ? 'granted' : 'denied';
     } catch {
       return 'denied';
     }
@@ -63,7 +57,7 @@ export interface LocalNotif {
   extra?: Record<string, unknown>;
 }
 
-// Initialize native Android channels, push listeners, and lockscreen actions
+// Initialize native Android channels, heads-up popups, and lockscreen actions
 export async function initializeNotificationSystem(
   userId?: string,
   onQuickAction?: (actionId: string) => void,
@@ -75,7 +69,6 @@ export async function initializeNotificationSystem(
         const reg = await navigator.serviceWorker.ready;
         let sub = await reg.pushManager.getSubscription();
         if (!sub && Notification.permission === 'granted') {
-          // Subscribe to push manager
           sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
@@ -162,36 +155,6 @@ export async function initializeNotificationSystem(
         }
       },
     );
-
-    // 4. Register Native Android Push Notifications safely (FCM token management)
-    try {
-      await PushNotifications.addListener('registration', async (token) => {
-        if (userId && token?.value) {
-          await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', userId);
-          await supabase.from('push_subscriptions').upsert(
-            {
-              user_id: userId,
-              endpoint: `native_android_${token.value}`,
-              platform: 'android',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'user_id,endpoint' },
-          );
-        }
-      });
-
-      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        showLocalNotification({
-          title: notification.title || 'Aanya & Me ❤️',
-          body: notification.body || 'New message received!',
-          extra: notification.data,
-        });
-      });
-
-      await PushNotifications.register();
-    } catch (pushErr) {
-      console.warn('PushNotifications optional registration:', pushErr);
-    }
   } catch (err) {
     console.warn('Notification system init warning:', err);
   }
