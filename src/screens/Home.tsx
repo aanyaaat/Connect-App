@@ -8,7 +8,7 @@ import { Button, EmptyState, Modal, Toast } from '@/components/ui';
 import { SosButton } from '@/components/SosButton';
 import { EventRow } from '@/components/EventRow';
 import type { AppEvent, EventType } from '@/lib/supabase';
-import { Heart, Sparkles, Send, MapPin, Radio, Wifi, WifiOff } from 'lucide-react';
+import { Heart, Sparkles, Copy, Check, MapPin, Radio, WifiOff, Plus } from 'lucide-react';
 
 interface Particle {
   id: number;
@@ -17,16 +17,31 @@ interface Particle {
 }
 
 export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 'settings') => void }) {
-  const { connection, partnerName, events, quickMessages, online, queueCount, send, partnerLastEvent, toggleKeepForever } = useAppData();
+  const {
+    connection,
+    partnerName,
+    events,
+    quickMessages,
+    online,
+    queueCount,
+    send,
+    partnerLastEvent,
+    toggleKeepForever,
+    createConnection,
+  } = useAppData();
   const { profile } = useAuth();
   const [toast, setToast] = useState<{ msg: string; tone?: 'default' | 'danger' | 'success' } | null>(null);
   const [sendingType, setSendingType] = useState<string | null>(null);
   const [showLocationModal, setShowLocationModal] = useState<AppEvent | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [heartPulsing, setHeartPulsing] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   const connected = connection?.status === 'accepted';
   const myName = profile?.display_name ?? 'You';
+  const activePairingCode =
+    connection?.pairing_code || localStorage.getItem('aanya_active_code') || null;
 
   const actions = useMemo<QuickAction[]>(() => {
     const custom = quickMessages.map((m) => ({
@@ -88,38 +103,109 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     setTimeout(() => setToast(null), 2500);
   }
 
+  function copyCode(c: string) {
+    navigator.clipboard?.writeText(c);
+    setCopiedCode(true);
+    setToast({ msg: 'Pairing code copied to clipboard! 📋', tone: 'success' });
+    setTimeout(() => setCopiedCode(false), 2000);
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  async function handleGenerateCode() {
+    setGeneratingCode(true);
+    const res = await createConnection();
+    setGeneratingCode(false);
+    if (res.error) {
+      setToast({ msg: res.error, tone: 'danger' });
+    } else if (res.code) {
+      setToast({ msg: `Generated code: ${res.code} 💌`, tone: 'success' });
+    }
+    setTimeout(() => setToast(null), 2500);
+  }
+
   const recent = events.slice(0, 4);
 
+  // Screen when Not Yet Connected with Partner
   if (!connected) {
     return (
-      <div className="app-shell px-5 py-6">
+      <div className="app-shell px-5 py-6 flex flex-col justify-between">
+        {/* Header */}
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl text-fg">Aanya &amp; Me</h1>
-            <p className="text-xs text-muted">Private connection for two ❤️</p>
+            <p className="text-xs font-semibold text-accent uppercase tracking-wider">
+              {greeting(myName)}
+            </p>
+            <h1 className="text-2xl text-fg font-serif">Aanya &amp; Me</h1>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent font-medium">
+          <div className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-xs text-accent font-semibold">
             <Radio className="h-3.5 w-3.5 animate-pulse" />
             <span>Pairing</span>
           </div>
         </header>
 
-        <div className="my-auto fade-up">
-          <EmptyState
-            icon="💌"
-            title="Not connected yet"
-            subtitle="Share your pairing code with Aanya or enter her code in settings to start sending real-time messages!"
-            action={
-              <Button size="lg" onClick={() => onNavigate('settings')} className="w-full">
-                Go to Connection Settings
+        {/* Prominent Always-Visible Pairing Code Card */}
+        <div className="my-auto fade-up flex flex-col gap-4">
+          {activePairingCode ? (
+            <div className="card p-5 bg-gradient-to-br from-card via-card to-accent-soft/40 border-accent/30 text-center shadow-lg">
+              <span className="text-3xl mb-1 block">💌</span>
+              <h2 className="text-lg font-serif font-bold text-fg">Your Active Pairing Code</h2>
+              <p className="text-xs text-muted mt-0.5">
+                Share this code with Aanya to connect in real time:
+              </p>
+
+              <div className="my-4 rounded-2xl bg-accent-soft/70 border border-accent/30 p-3.5 flex items-center justify-center gap-3">
+                <span className="font-serif text-3xl font-bold tracking-widest text-accent select-all">
+                  {activePairingCode}
+                </span>
+                <button
+                  onClick={() => copyCode(activePairingCode)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-md active:scale-95 transition"
+                  aria-label="Copy Code"
+                >
+                  {copiedCode ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-muted font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Listening live for Aanya to join...</span>
+              </div>
+            </div>
+          ) : (
+            <div className="card p-5 text-center">
+              <span className="text-3xl mb-2 block">✨</span>
+              <h2 className="text-lg font-serif font-bold text-fg">No Pairing Code Active</h2>
+              <p className="text-xs text-muted mt-1 mb-4">
+                Generate a 6-digit code or enter your partner's code to connect.
+              </p>
+              <Button onClick={handleGenerateCode} loading={generatingCode} className="w-full">
+                <Plus className="h-4 w-4" />
+                <span>Generate Pairing Code</span>
               </Button>
-            }
-          />
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onNavigate('settings')}
+              className="w-full"
+            >
+              Enter Aanya's Code in Settings &rarr;
+            </Button>
+          </div>
         </div>
+
+        <p className="text-center text-[11px] text-muted pb-2">
+          Private, encrypted &amp; free forever for you two ❤️
+        </p>
+
+        {toast && <Toast message={toast.msg} tone={toast.tone} />}
       </div>
     );
   }
 
+  // Screen when Connected
   return (
     <div className="app-shell px-5 py-6 flex flex-col gap-5">
       {/* Top Header */}
@@ -128,7 +214,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
           <p className="text-xs font-semibold text-accent uppercase tracking-wider">
             {greeting(myName)}
           </p>
-          <h1 className="text-2xl text-fg">Aanya &amp; Me</h1>
+          <h1 className="text-2xl text-fg font-serif">Aanya &amp; Me</h1>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-card border border-border/80 px-3 py-1.5 shadow-sm text-xs font-medium">
           {online ? (

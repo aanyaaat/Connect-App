@@ -346,6 +346,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const createConnection = useCallback<AppDataState['createConnection']>(async () => {
     if (!user) return { code: null, error: 'Sign in first.' };
     const code = generatePairingCode();
+    localStorage.setItem('aanya_active_code', code);
     const { data, error } = await supabase
       .from('connections')
       .insert({ pairing_code: code, user_a: user.id, status: 'pending' })
@@ -372,9 +373,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase
       .from('connections')
       .update({ user_b: user.id, status: 'accepted', accepted_at: new Date().toISOString() })
-      .eq('id', conn.id)
-      .eq('user_b', null);
+      .eq('id', conn.id);
     if (error) return { ok: false, error: error.message };
+    localStorage.setItem('aanya_active_code', code);
     await loadConnection();
     return { ok: true };
   }, [user, loadConnection]);
