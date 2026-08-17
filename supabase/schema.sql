@@ -119,30 +119,56 @@ alter table public.push_subscriptions enable row level security;
 -- ==============================================================================
 
 -- Drop existing policies if re-running script
+drop policy if exists "Allow reading profiles" on public.profiles;
+drop policy if exists "Allow inserting profiles" on public.profiles;
+drop policy if exists "Allow updating profiles" on public.profiles;
+drop policy if exists "Allow deleting profiles" on public.profiles;
 drop policy if exists "Allow users to read own profile and connected partner's profile" on public.profiles;
 drop policy if exists "Allow users to insert their own profile" on public.profiles;
 drop policy if exists "Allow users to update their own profile" on public.profiles;
 drop policy if exists "Allow users to delete their own profile" on public.profiles;
 
+drop policy if exists "Allow connection lookup by pairing code" on public.connections;
+drop policy if exists "Allow connection creation" on public.connections;
+drop policy if exists "Allow connection update" on public.connections;
+drop policy if exists "Allow connection deletion" on public.connections;
 drop policy if exists "Allow users to view their own connections or pending connection by code" on public.connections;
 drop policy if exists "Allow authenticated users to create a connection" on public.connections;
 drop policy if exists "Allow connection participants or joining partner to update connection" on public.connections;
 drop policy if exists "Allow connection participants to delete connection" on public.connections;
 
+drop policy if exists "Allow reading places" on public.places;
+drop policy if exists "Allow creating places" on public.places;
+drop policy if exists "Allow updating places" on public.places;
+drop policy if exists "Allow deleting places" on public.places;
 drop policy if exists "Allow users to view own places" on public.places;
 drop policy if exists "Allow users to create own places" on public.places;
 drop policy if exists "Allow users to update own places" on public.places;
 drop policy if exists "Allow users to delete own places" on public.places;
 
+drop policy if exists "Allow reading quick messages" on public.quick_messages;
+drop policy if exists "Allow creating quick messages" on public.quick_messages;
+drop policy if exists "Allow updating quick messages" on public.quick_messages;
+drop policy if exists "Allow deleting quick messages" on public.quick_messages;
 drop policy if exists "Allow users to view own quick messages" on public.quick_messages;
 drop policy if exists "Allow users to create own quick messages" on public.quick_messages;
 drop policy if exists "Allow users to update own quick messages" on public.quick_messages;
 drop policy if exists "Allow users to delete own quick messages" on public.quick_messages;
 
+drop policy if exists "Allow reading events" on public.events;
+drop policy if exists "Allow inserting events" on public.events;
+drop policy if exists "Allow updating events" on public.events;
+drop policy if exists "Allow deleting events" on public.events;
 drop policy if exists "Allow connection members to read events" on public.events;
 drop policy if exists "Allow connection members to insert events" on public.events;
 drop policy if exists "Allow connection members to update events" on public.events;
 drop policy if exists "Allow connection members to delete events" on public.events;
+
+drop policy if exists "Allow reading push subscriptions" on public.push_subscriptions;
+drop policy if exists "Allow inserting push subscriptions" on public.push_subscriptions;
+drop policy if exists "Allow updating push subscriptions" on public.push_subscriptions;
+drop policy if exists "Allow deleting push subscriptions" on public.push_subscriptions;
+drop policy if exists "Allow all push_subscriptions" on public.push_subscriptions;
 
 -- Profiles policies
 create policy "Allow reading profiles"
