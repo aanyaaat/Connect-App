@@ -31,18 +31,40 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
-function getNormalizedSlug(name: string): string {
+export function nameToDeterministicUuid(name: string): string {
   const clean = name.toLowerCase().trim().replace(/[\s_\-.]+/g, '');
-  if (clean.startsWith('akh')) return 'akhil';
-  if (clean.startsWith('aany') || clean.startsWith('anya')) return 'aanya';
-  return clean.replace(/[^a-z0-9]/g, '').slice(0, 24) || 'user';
+  if (clean.startsWith('akh')) {
+    return '00000000-0000-4000-8000-000000000001';
+  }
+  if (clean.startsWith('aany') || clean.startsWith('anya')) {
+    return '00000000-0000-4000-8000-000000000002';
+  }
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = ((hash << 5) - hash) + clean.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  return `00000000-0000-4000-8000-${hex.repeat(3).slice(0, 12)}`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const raw = localStorage.getItem(CACHED_USER_KEY);
-      return raw ? JSON.parse(raw) : null;
+      if (raw) return JSON.parse(raw);
+      const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
+      if (savedName) {
+        const uid = nameToDeterministicUuid(savedName);
+        return {
+          id: uid,
+          app_metadata: {},
+          user_metadata: { name: savedName },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        } as User;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -53,13 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(CACHED_PROFILE_KEY);
       if (raw) return JSON.parse(raw);
       const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
-      if (savedName) return { id: 'cached', display_name: savedName, avatar_url: null, created_at: '', updated_at: '' };
+      if (savedName) {
+        const uid = nameToDeterministicUuid(savedName);
+        return { id: uid, display_name: savedName, avatar_url: null, created_at: '', updated_at: '' };
+      }
       return null;
     } catch {
       return null;
     }
   });
-  const [loading, setLoading] = useState(() => !localStorage.getItem(CACHED_USER_KEY) && !localStorage.getItem(DISPLAY_NAME_KEY));
+  const [loading, setLoading] = useState(() => !localStorage.getItem(DISPLAY_NAME_KEY) && !localStorage.getItem(CACHED_USER_KEY));
 
   const loadProfile = useCallback(async (uid: string, fallbackName?: string) => {
     try {
@@ -95,27 +120,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initSession = useCallback(async () => {
     try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        setSession(data.session);
-        setUser(data.session.user);
-        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(data.session.user));
-        await loadProfile(data.session.user.id);
-      } else {
-        // Auto-reconnect saved profile on same device/network
-        const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
-        if (savedName) {
-          const slug = getNormalizedSlug(savedName);
-          const email = `partner_${slug}@aanya.app`;
-          const password = `aanya_pass_${slug}_2026!`;
-          const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInData.user) {
-            setSession(signInData.session);
-            setUser(signInData.user);
-            localStorage.setItem(CACHED_USER_KEY, JSON.stringify(signInData.user));
-            await loadProfile(signInData.user.id, savedName);
-          }
-        }
+      const savedName = localStorage.getItem(DISPLAY_NAME_KEY);
+      if (savedName) {
+        const uid = nameToDeterministicUuid(savedName);
+        const userObj: User = {
+          id: uid,
+          app_metadata: {},
+          user_metadata: { name: savedName },
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        };
+        setUser(userObj);
+        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(userObj));
+        await loadProfile(uid, savedName);
       }
     } catch (e) {
       console.warn('Auth init warning:', e);
@@ -126,100 +143,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     initSession();
+  }, [initSession]);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        localStorage.setItem(CACHED_USER_KEY, JSON.stringify(sess.user));
-        loadProfile(sess.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        localStorage.removeItem(CACHED_USER_KEY);
-        localStorage.removeItem(CACHED_PROFILE_KEY);
-      }
-      setLoading(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, [initSession, loadProfile]);
-
-  // Deterministic 1-tap sign-in: Same name logs into same profile on any device (ZERO emails sent!)
+  // Pure 1-tap username sign-in (100% email-free, ZERO rate limits forever!)
   const startWithDisplayName = useCallback<AuthState['startWithDisplayName']>(async (name) => {
     const trimmed = name.trim() || 'You';
     localStorage.setItem(DISPLAY_NAME_KEY, trimmed);
 
-    const slug = getNormalizedSlug(trimmed);
-    const email = `partner_${slug}@aanya.app`;
-    const password = `aanya_pass_${slug}_2026!`;
+    const uid = nameToDeterministicUuid(trimmed);
+    const userObj: User = {
+      id: uid,
+      app_metadata: {},
+      user_metadata: { name: trimmed },
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
+    };
 
-    let userObj: User | null = null;
-    let sessionObj: Session | null = null;
+    setUser(userObj);
+    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(userObj));
 
-    // 1. Try signing in directly to existing unified account
-    const { data: signInRes, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInErr && signInRes?.user) {
-      userObj = signInRes.user;
-      sessionObj = signInRes.session;
-    } else {
-      // 2. If account doesn't exist yet, create it once (bypasses email limits completely)
-      const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name: trimmed },
-        },
-      });
-
-      if (!signUpErr && signUpRes?.user) {
-        userObj = signUpRes.user;
-        sessionObj = signUpRes.session;
-      } else if (signUpErr) {
-        // Fallback: If signup reported existing user, try sign-in again
-        const { data: retryRes } = await supabase.auth.signInWithPassword({ email, password });
-        if (retryRes?.user) {
-          userObj = retryRes.user;
-          sessionObj = retryRes.session;
-        } else {
-          return { error: signUpErr.message };
-        }
-      }
-    }
-
-    if (userObj) {
-      setUser(userObj);
-      setSession(sessionObj);
-      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(userObj));
+    // Direct database upsert with 0 email calls
+    try {
       await supabase.from('profiles').upsert({
-        id: userObj.id,
+        id: uid,
         display_name: trimmed,
       });
-      await loadProfile(userObj.id, trimmed);
+    } catch (e) {
+      console.warn('Direct profile upsert error:', e);
     }
 
+    await loadProfile(uid, trimmed);
     return { error: null };
   }, [loadProfile]);
 
-  const signUp = useCallback<AuthState['signUp']>(async (email, password, name) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    if (data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        display_name: name || 'You',
-      });
-    }
+  const signUp = useCallback<AuthState['signUp']>(async (_email, _password, name) => {
+    return startWithDisplayName(name);
+  }, [startWithDisplayName]);
+
+  const signIn = useCallback<AuthState['signIn']>(async (_email, _password) => {
     return { error: null };
   }, []);
 
-  const signIn = useCallback<AuthState['signIn']>(async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
-  }, []);
-
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
     localStorage.removeItem(DISPLAY_NAME_KEY);
+    localStorage.removeItem(CACHED_USER_KEY);
+    localStorage.removeItem(CACHED_PROFILE_KEY);
     localStorage.removeItem('aanya_onboarded');
     localStorage.removeItem('aanya_skipped_pair');
     setProfile(null);

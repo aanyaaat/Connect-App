@@ -13,9 +13,9 @@ create extension if not exists "uuid-ossp";
 -- PART 1: CREATE ALL TABLES FIRST (Resolves all cross-table relation dependencies)
 -- ==============================================================================
 
--- 1. PROFILES
+-- 1. PROFILES (Direct Username-based UUIDs, Zero Email Auth dependencies)
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key,
   display_name text not null default 'You',
   avatar_color text not null default '#9f1239',
   fcm_token text,
@@ -27,7 +27,8 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
--- Idempotent column migrations for existing databases
+-- Idempotent column migrations & foreign key decoupling
+alter table public.profiles drop constraint if exists profiles_id_fkey;
 alter table public.profiles add column if not exists battery_level integer;
 alter table public.profiles add column if not exists is_charging boolean default false;
 
@@ -35,17 +36,20 @@ alter table public.profiles add column if not exists is_charging boolean default
 create table if not exists public.connections (
   id uuid primary key default gen_random_uuid(),
   pairing_code text unique not null,
-  user_a uuid not null references auth.users(id) on delete cascade,
-  user_b uuid references auth.users(id) on delete cascade,
+  user_a uuid not null,
+  user_b uuid,
   status text not null default 'pending' check (status in ('pending', 'accepted', 'severed')),
   created_at timestamptz not null default now(),
   accepted_at timestamptz
 );
 
+alter table public.connections drop constraint if exists connections_user_a_fkey;
+alter table public.connections drop constraint if exists connections_user_b_fkey;
+
 -- 3. PLACES
 create table if not exists public.places (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null,
   name text not null,
   emoji text not null default '📍',
   latitude double precision,
@@ -59,10 +63,12 @@ create table if not exists public.places (
   created_at timestamptz not null default now()
 );
 
+alter table public.places drop constraint if exists places_owner_id_fkey;
+
 -- 4. QUICK MESSAGES
 create table if not exists public.quick_messages (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null,
   emoji text not null default '💬',
   label text not null,
   message text not null,
@@ -71,11 +77,13 @@ create table if not exists public.quick_messages (
   created_at timestamptz not null default now()
 );
 
+alter table public.quick_messages drop constraint if exists quick_messages_owner_id_fkey;
+
 -- 5. EVENTS (MESSAGES, ARRIVALS, SOS, WITH AUTO-STORAGE MANAGEMENT)
 create table if not exists public.events (
   id uuid primary key default gen_random_uuid(),
   connection_id uuid not null references public.connections(id) on delete cascade,
-  sender_id uuid not null references auth.users(id) on delete cascade,
+  sender_id uuid not null,
   type text not null,
   message text not null,
   emoji text not null default '❤️',
@@ -91,10 +99,12 @@ create table if not exists public.events (
   created_at timestamptz not null default now()
 );
 
+alter table public.events drop constraint if exists events_sender_id_fkey;
+
 -- 6. PUSH SUBSCRIPTIONS (FOR BACKGROUND WEB & NATIVE PUSH)
 create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   endpoint text not null,
   p256dh text,
   auth text,
@@ -103,11 +113,13 @@ create table if not exists public.push_subscriptions (
   unique(user_id, endpoint)
 );
 
+alter table public.push_subscriptions drop constraint if exists push_subscriptions_user_id_fkey;
+
 -- Ephemeral Status (1-Hour Photo / Video / Voice)
 create table if not exists public.ephemeral_statuses (
   id uuid primary key default gen_random_uuid(),
   connection_id uuid not null references public.connections(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   type text not null check (type in ('PHOTO', 'VIDEO', 'VOICE')),
   media_url text not null,
   caption text,
@@ -115,6 +127,8 @@ create table if not exists public.ephemeral_statuses (
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default (now() + interval '1 hour')
 );
+
+alter table public.ephemeral_statuses drop constraint if exists ephemeral_statuses_user_id_fkey;
 
 -- ==============================================================================
 -- PART 2: ENABLE ROW LEVEL SECURITY (RLS)
