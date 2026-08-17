@@ -164,7 +164,15 @@ export async function showLocalNotification(n: LocalNotif): Promise<void> {
   // Native Android Notification
   if (Capacitor.isNativePlatform()) {
     try {
-      const id = Math.floor(Math.random() * 1000000);
+      let id = Math.floor(Math.random() * 1000000);
+      if (n.tag) {
+        let hash = 0;
+        for (let i = 0; i < n.tag.length; i++) {
+          hash = ((hash << 5) - hash) + n.tag.charCodeAt(i);
+          hash |= 0;
+        }
+        id = Math.abs(hash % 1000000);
+      }
       await LocalNotifications.schedule({
         notifications: [
           {

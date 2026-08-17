@@ -195,6 +195,25 @@ public class HeartbeatService extends Service {
         heartbeatThread.start();
     }
 
+    // Thread-safe LRU cache of recently notified event IDs to permanently eliminate duplicate notifications
+    private final java.util.Set<String> notifiedEventSet = java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<>());
+
+    private synchronized boolean shouldNotifyEvent(String eventId) {
+        if (eventId == null || eventId.trim().isEmpty()) return false;
+        if (notifiedEventSet.contains(eventId)) {
+            return false; // Already notified! Prevent duplicate!
+        }
+        notifiedEventSet.add(eventId);
+        if (notifiedEventSet.size() > 200) {
+            java.util.Iterator<String> it = notifiedEventSet.iterator();
+            if (it.hasNext()) {
+                it.next();
+                it.remove();
+            }
+        }
+        return true;
+    }
+
     private void handleWebSocketMessage(String text) {
         try {
             JSONObject msg = new JSONObject(text);
@@ -220,10 +239,10 @@ public class HeartbeatService extends Service {
                     String myUserId = prefs.getString("user_id", "");
                     String partnerName = prefs.getString("partner_name", "Aanya");
 
-                    if (!eventId.isEmpty() && !eventId.equals(lastNotifiedEventId) && !senderId.equals(myUserId)) {
+                    if (!eventId.isEmpty() && !senderId.equals(myUserId) && shouldNotifyEvent(eventId)) {
                         lastNotifiedEventId = eventId;
                         if (!isAppInForeground) {
-                            showSystemNotification(emoji + " " + partnerName, message);
+                            showSystemNotification(eventId, emoji + " " + partnerName, message);
                         }
                     }
                 }
@@ -293,15 +312,17 @@ public class HeartbeatService extends Service {
                     String message = latest.optString("message", "");
                     String emoji = latest.optString("emoji", "❤️");
 
-                    if (!eventId.isEmpty() && !eventId.equals(lastNotifiedEventId) && !senderId.equals(myUserId)) {
-                        if (!lastNotifiedEventId.isEmpty()) {
+                    if (!eventId.isEmpty() && !senderId.equals(myUserId)) {
+                        if (lastNotifiedEventId.isEmpty()) {
+                            // Initial seed so existing history doesn't trigger spurious alerts on service boot
+                            lastNotifiedEventId = eventId;
+                            notifiedEventSet.add(eventId);
+                        } else if (shouldNotifyEvent(eventId)) {
+                            lastNotifiedEventId = eventId;
                             if (!isAppInForeground) {
-                                showSystemNotification(emoji + " " + partnerName, message);
+                                showSystemNotification(eventId, emoji + " " + partnerName, message);
                             }
                         }
-                        lastNotifiedEventId = eventId;
-                    } else if (lastNotifiedEventId.isEmpty() && !eventId.isEmpty()) {
-                        lastNotifiedEventId = eventId;
                     }
                 }
             }
@@ -314,7 +335,7 @@ public class HeartbeatService extends Service {
     // =========================================================================
     // 💡 3. INSTANT LOCKSCREEN ILLUMINATION & HAPTIC NOTIFICATION
     // =========================================================================
-    private void showSystemNotification(String title, String body) {
+    private void showSystemNotification(String eventId, String title, String body) {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
 
@@ -360,7 +381,8 @@ public class HeartbeatService extends Service {
                 .setLights(0xFFFF1493, 1000, 500)
                 .setVibrate(new long[]{0, 300, 150, 300, 150, 450});
 
-        int notifId = (int) (System.currentTimeMillis() % 1000000);
+        // Deterministic ID based on event ID hash: Android OS will automatically deduplicate and update existing card!
+        int notifId = eventId != null && !eventId.isEmpty() ? Math.abs(eventId.hashCode() % 100000) : 1002;
         nm.notify(notifId, builder.build());
     }
 
