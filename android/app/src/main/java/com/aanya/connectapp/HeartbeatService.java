@@ -76,7 +76,7 @@ public class HeartbeatService extends Service {
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
             } else {
                 startForeground(1001, fgNotif);
             }
@@ -482,6 +482,27 @@ public class HeartbeatService extends Service {
             try {
                 mediaSession = new android.support.v4.media.session.MediaSessionCompat(this, "AanyaLockMediaSession");
                 mediaSession.setActive(true);
+            } catch (Exception ignored) {}
+        }
+
+        if (mediaSession != null) {
+            try {
+                android.support.v4.media.session.PlaybackStateCompat state = new android.support.v4.media.session.PlaybackStateCompat.Builder()
+                        .setActions(android.support.v4.media.session.PlaybackStateCompat.ACTION_PLAY
+                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_PAUSE
+                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                        .setState(android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
+                        .build();
+                mediaSession.setPlaybackState(state);
+
+                android.support.v4.media.MediaMetadataCompat metadata = new android.support.v4.media.MediaMetadataCompat.Builder()
+                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, "Connected with " + partnerName + " ❤️")
+                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, "Aanya & Me • Lock Screen Controls")
+                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM, "Tap below to send love or live doodle")
+                        .putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+                        .build();
+                mediaSession.setMetadata(metadata);
             } catch (Exception ignored) {}
         }
 
