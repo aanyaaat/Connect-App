@@ -34,14 +34,14 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- Native 24/7 Background Notification & Lock Screen Controls Service -->
+        <!-- Native 24/7 Background Realtime Messaging & Lock Screen Controls Service -->
         <service
             android:name=".HeartbeatService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="remoteMessaging" />
 
-        <!-- Automatic Background Restart on Phone Reboot -->
+        <!-- Automatic Background Restart on Phone Reboot or App Update -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -49,6 +49,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
@@ -65,11 +66,11 @@
                 android:resource="@xml/connect_widget_info" />
         </receiver>
 
-        <!-- Lock Screen Quick Action Receiver (Direct Sending without unlocking phone) -->
+        <!-- Lock Screen Quick Action Receiver (Internal Explicit PendingIntents Only) -->
         <receiver
             android:name=".QuickActionReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.aanya.connectapp.ACTION_QUICK_1" />
                 <action android:name="com.aanya.connectapp.ACTION_QUICK_2" />
@@ -77,32 +78,17 @@
             </intent-filter>
         </receiver>
 
-        <!-- Lock Screen Realtime Doodle Canvas (Shows directly above lock screen) -->
+        <!-- Lock Screen Realtime Doodle Canvas (Shows directly above lock screen using official showWhenLocked) -->
         <activity
             android:name=".LockScreenDoodleActivity"
             android:label="Aanya &amp; Me Doodle"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:exported="true"
+            android:showForAllUsers="true"
+            android:exported="false"
             android:theme="@android:style/Theme.NoTitleBar"
             android:launchMode="singleTask" />
 
-        <!-- Universal Lock Screen Foreground Card Activity (Guaranteed Over All Themes & Glance) -->
-        <activity
-            android:name=".LockScreenCardActivity"
-            android:label="Aanya &amp; Me Quick Actions"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:launchMode="singleInstance" />
-
-        <!-- Permanent Lock Screen Card Overlay Service -->
-        <service
-            android:name=".LockScreenOverlayService"
-            android:enabled="true"
-            android:exported="false" />
     </application>
 
     <!-- Permissions -->
@@ -110,13 +96,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />

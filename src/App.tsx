@@ -44,11 +44,13 @@ function Router() {
 
   if (isDoodleScreen) {
     return (
-      <div className="fixed inset-0 bg-[#170610] z-50 flex flex-col items-center justify-center">
+      <div className="fixed inset-0 bg-[#0F0712] z-50 flex flex-col items-center justify-center">
         <DoodleCanvas
           isOpen={true}
           onClose={() => {
-            if (typeof window !== 'undefined' && window.history.length > 1) {
+            if (typeof (window as any).AndroidDoodleBridge?.closeDoodle === 'function') {
+              (window as any).AndroidDoodleBridge.closeDoodle();
+            } else if (typeof window !== 'undefined' && window.history.length > 1) {
               window.history.back();
             }
           }}

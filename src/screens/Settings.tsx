@@ -127,18 +127,17 @@ function NotificationsSection() {
       return false;
     }
   });
+  const [isBatteryIgnored, setIsBatteryIgnored] = useState<boolean>(true);
   const [testSent, setTestSent] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string>('');
 
   useEffect(() => {
-    // 1. Check existing permission status
     try {
       notifPermission().then((p) => {
         if (p === 'granted') {
           setGranted(true);
           try { localStorage.setItem('aanya_notif_granted', '1'); } catch {}
         } else {
-          // 2. Instagram-style Auto Prompt: If not granted, auto-request permission immediately
           requestNotifPermission().then((res) => {
             if (res === 'granted') {
               setGranted(true);
@@ -147,6 +146,10 @@ function NotificationsSection() {
           }).catch(() => {});
         }
       }).catch(() => {});
+
+      if (typeof (window as any).AndroidNativeConfig?.isBatteryOptimizationIgnored === 'function') {
+        setIsBatteryIgnored((window as any).AndroidNativeConfig.isBatteryOptimizationIgnored());
+      }
     } catch {}
   }, []);
 
@@ -158,7 +161,10 @@ function NotificationsSection() {
         try { localStorage.setItem('aanya_notif_granted', '1'); } catch {}
         setStatusMsg('Notifications successfully enabled! 🎉');
       } else {
-        setStatusMsg('Please allow notifications in your device settings.');
+        if (typeof (window as any).AndroidNativeConfig?.openNotificationSettings === 'function') {
+          (window as any).AndroidNativeConfig.openNotificationSettings();
+        }
+        setStatusMsg('Please allow notifications in device settings.');
       }
     } catch (e) {
       console.warn(e);
@@ -179,7 +185,7 @@ function NotificationsSection() {
     }
   }
 
-  const [lockCardEnabled, setLockCardEnabled] = useState<boolean>(() => {
+  const [lockControlsEnabled, setLockControlsEnabled] = useState<boolean>(() => {
     try {
       return localStorage.getItem('aanya_lock_card_enabled') !== '0';
     } catch {
@@ -198,7 +204,7 @@ function NotificationsSection() {
             <p className="text-sm font-bold text-fg">Push &amp; Lock-Screen Alerts</p>
             <p className="text-xs text-muted">
               {granted
-                ? 'System notifications are ACTIVE and enabled! 🎉'
+                ? 'System notifications are active and ready! 🎉'
                 : 'Allow notifications to receive instant love & lock-screen controls'}
             </p>
           </div>
@@ -211,19 +217,19 @@ function NotificationsSection() {
         </p>
       )}
 
-      {/* 🔒 Feature Toggle: Lock-Screen Card & Doodle Controls */}
+      {/* 🔒 Feature Toggle: Lock-Screen Controls */}
       <div className="card p-3.5 bg-gradient-to-br from-card via-accent-soft/15 to-card border border-accent/40 flex items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="text-xl">🔒</span>
           <div>
-            <p className="text-xs font-bold text-fg">Lock-Screen Card &amp; Live Doodle</p>
-            <p className="text-[11px] text-muted">Show 3 quick actions and doodle pinned on lock screen</p>
+            <p className="text-xs font-bold text-fg">Lock-Screen Controls</p>
+            <p className="text-[11px] text-muted">Keep Aanya &amp; Me quick actions and doodle available on the lock screen</p>
           </div>
         </div>
         <Toggle
-          checked={lockCardEnabled}
+          checked={lockControlsEnabled}
           onChange={(val) => {
-            setLockCardEnabled(val);
+            setLockControlsEnabled(val);
             try {
               localStorage.setItem('aanya_lock_card_enabled', val ? '1' : '0');
               if (typeof (window as any).AndroidNativeConfig?.setLockScreenCardEnabled === 'function') {
@@ -245,29 +251,29 @@ function NotificationsSection() {
         <span>{testSent ? 'Notification Sent! Check your status bar / lock screen ❤️' : 'Send Test Notification'}</span>
       </Button>
 
-      {/* 🔒 Live Lock-Screen Quick Action Controls Guide */}
+      {/* 🔒 Native Lock-Screen Controls Guide */}
       <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="text-base">🔒</span>
           <div>
-            <p className="text-xs font-bold text-fg uppercase tracking-wider">Permanent Lock-Screen Card &amp; Gestures</p>
-            <p className="text-[11px] text-muted">Directly on lock screen window (no shade pull-down needed!)</p>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Native Lock-Screen Controls</p>
+            <p className="text-[11px] text-muted">Official Android notifications &amp; showWhenLocked canvas</p>
           </div>
         </div>
         <div className="rounded-xl bg-card p-2.5 text-xs text-fg flex flex-col gap-2 border border-border/50">
-          <p>• <b>📱 Floating Lock-Screen Card</b>: When screen wakes, a luxury card appears directly over your lock screen with 3 actions (❤️ Love, ✨ Miss You, 🎨 Doodle). Disappears automatically when unlocked.</p>
-          <p>• <b>🎨 Lock-Screen Live Doodle</b>: Tap "🎨 Doodle" to draw and interact on the live shared canvas directly above your lock screen without entering your password or PIN.</p>
-          <p>• <b>⚡ Volume Up + Power Button Shortcut</b>: Press Volume Up + Power Button (or 2 quick Volume Up clicks) while screen is locked to send instant love in the background with haptic pulses (no Android SOS dialog!).</p>
+          <p>• <b>⚡ Quick Message Actions</b>: Tap <b>❤️ Love</b> or <b>✨ Miss You</b> directly from your lock screen to send love instantly without unlocking your phone.</p>
+          <p>• <b>🎨 Realtime Doodle Canvas</b>: Tap <b>🎨 Doodle</b> to open the live shared drawing canvas above your lock screen using Android's official secure <code>showWhenLocked</code> mechanism.</p>
+          <p>• <b>🛡️ Standards-Compliant &amp; Secure</b>: Operates within official Android guidelines without arbitrary overlay hacks, preserving your lock-screen security and PIN/biometrics.</p>
         </div>
       </div>
 
-      {/* 🔒 1-Tap Android Lock-Screen & Permissions Setup Hub */}
+      {/* ⚙️ Android System Settings Hub */}
       <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span className="text-base">⚙️</span>
           <div>
-            <p className="text-xs font-bold text-fg uppercase tracking-wider">Android Lock-Screen &amp; Permissions Setup</p>
-            <p className="text-[11px] text-muted">Tap below to easily enable lock-screen visibility &amp; draw-over permissions</p>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Android Lock-Screen &amp; Battery Settings</p>
+            <p className="text-[11px] text-muted">Customize notification visibility and background performance</p>
           </div>
         </div>
 
@@ -275,10 +281,10 @@ function NotificationsSection() {
           {/* 1. Lock-screen notification settings */}
           <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-fg">1. Lock-Screen Notification Card</span>
-              <span className="text-[10px] text-accent font-semibold">ESSENTIAL</span>
+              <span className="text-xs font-bold text-fg">1. Lock-Screen Notification Visibility</span>
+              <span className="text-[10px] text-accent font-semibold">{granted ? 'ALLOWED' : 'ACTION NEEDED'}</span>
             </div>
-            <p className="text-[11px] text-muted">Ensure "Show on lock screen" &amp; "Show full content" are allowed so the quick action buttons stay pinned.</p>
+            <p className="text-[11px] text-muted">Ensure "Show on Lock screen" is enabled in system settings so quick actions remain visible.</p>
             <Button
               size="sm"
               variant="outline"
@@ -287,7 +293,7 @@ function NotificationsSection() {
                   if (typeof (window as any).AndroidNativeConfig?.openNotificationSettings === 'function') {
                     (window as any).AndroidNativeConfig.openNotificationSettings();
                   } else {
-                    alert('Open your phone Settings -> Notifications -> Aanya & Me -> Enable "Lock screen notifications"');
+                    alert('Open phone Settings -> Notifications -> Aanya & Me -> Allow "Lock screen notifications"');
                   }
                 } catch (e) {
                   console.error(e);
@@ -295,44 +301,51 @@ function NotificationsSection() {
               }}
               className="w-full text-xs mt-1"
             >
-              <span>🔔 Open Lock-Screen Notification Settings</span>
+              <span>🔔 Open Android Notification Settings</span>
             </Button>
           </div>
 
-          {/* 2. Display Over Other Apps (Overlay for Lock-Screen Doodle) */}
+          {/* 2. Battery Optimization Exemption */}
           <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-fg">2. Draw Over Lock Screen (Live Doodle)</span>
-              <span className="text-[10px] text-accent font-semibold">DOODLE</span>
+              <span className="text-xs font-bold text-fg">2. Background Battery Optimization</span>
+              <span className={`text-[10px] font-semibold ${isBatteryIgnored ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {isBatteryIgnored ? 'UNRESTRICTED' : 'OPTIMIZED'}
+              </span>
             </div>
-            <p className="text-[11px] text-muted">Allows the live drawing canvas to open over your lock screen without asking for a passcode or PIN.</p>
+            <p className="text-[11px] text-muted">Allow unrestricted background execution so realtime messages and quick actions respond instantly 24/7.</p>
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
                 try {
-                  if (typeof (window as any).AndroidNativeConfig?.openOverlaySettings === 'function') {
-                    (window as any).AndroidNativeConfig.openOverlaySettings();
+                  if (typeof (window as any).AndroidNativeConfig?.requestBatteryOptimizationExemption === 'function') {
+                    (window as any).AndroidNativeConfig.requestBatteryOptimizationExemption();
+                    setTimeout(() => {
+                      if (typeof (window as any).AndroidNativeConfig?.isBatteryOptimizationIgnored === 'function') {
+                        setIsBatteryIgnored((window as any).AndroidNativeConfig.isBatteryOptimizationIgnored());
+                      }
+                    }, 2000);
                   } else {
-                    alert('Open phone Settings -> Apps -> Special app access -> Display over other apps -> Enable Aanya & Me');
+                    alert('Allow "Unrestricted" battery in Settings -> Apps -> Aanya & Me -> Battery.');
                   }
                 } catch (e) {
                   console.error(e);
                 }
               }}
-              className="w-full text-xs mt-1"
+              className="w-full text-xs mt-1 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
             >
-              <span>🎨 Enable "Display Over Other Apps" (Appear On Top)</span>
+              <span>🚀 Allow Unrestricted Battery Delivery</span>
             </Button>
           </div>
 
-          {/* 3. Xiaomi / HyperOS / Custom Themes Lock Screen Permissions */}
+          {/* 3. Optional Xiaomi / HyperOS helper */}
           <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-fg">3. Xiaomi / HyperOS "Show on Lock screen"</span>
-              <span className="text-[10px] text-amber-400 font-semibold">MIUI / HYPEROS</span>
+              <span className="text-xs font-bold text-fg">3. Xiaomi / HyperOS / POCO Settings</span>
+              <span className="text-[10px] text-amber-400 font-semibold">OEM HELPER</span>
             </div>
-            <p className="text-[11px] text-muted">On Xiaomi / Redmi / POCO, toggle "Show on Lock screen" so cards bypass custom lock skins.</p>
+            <p className="text-[11px] text-muted">On Xiaomi / MIUI / HyperOS devices, enable "Show on Lock screen" under app permissions.</p>
             <Button
               size="sm"
               variant="outline"
@@ -350,33 +363,6 @@ function NotificationsSection() {
               className="w-full text-xs mt-1 border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
             >
               <span>⚡ Open Xiaomi / POCO Lock Screen Permissions</span>
-            </Button>
-          </div>
-
-          {/* 4. Unrestricted Battery Delivery */}
-          <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-fg">4. Unrestricted 24/7 Battery</span>
-              <span className="text-[10px] text-emerald-400 font-semibold">REALTIME</span>
-            </div>
-            <p className="text-[11px] text-muted">Exempt from Android sleep so messages and lock-screen buttons are active 24/7.</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                try {
-                  if (typeof (window as any).AndroidNativeConfig?.requestBatteryOptimizationExemption === 'function') {
-                    (window as any).AndroidNativeConfig.requestBatteryOptimizationExemption();
-                  } else {
-                    alert('Allow "Unrestricted" battery in Settings -> Apps -> Aanya & Me -> Battery.');
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
-              }}
-              className="w-full text-xs mt-1 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
-            >
-              <span>🚀 Allow Unrestricted Battery Delivery</span>
             </Button>
           </div>
         </div>

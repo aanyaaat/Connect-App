@@ -14,12 +14,16 @@ import android.webkit.WebView;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
+/**
+ * Main BridgeActivity for Aanya & Me.
+ * Coordinates background service startup, user synchronization,
+ * and user-initiated permission settings navigation.
+ */
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         startBackgroundService();
-        promptBatteryOptimizationExemption();
     }
 
     @Override
@@ -51,15 +55,6 @@ public class MainActivity extends BridgeActivity {
                                 .putString("partner_name", partnerName)
                                 .apply();
                         HeartbeatService.updateNotification(MainActivity.this);
-                    }
-
-                    @JavascriptInterface
-                    public void savePowerMessage(String text, String emoji) {
-                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-                        prefs.edit()
-                                .putString("power_message_text", text)
-                                .putString("power_message_emoji", emoji)
-                                .apply();
                     }
 
                     @JavascriptInterface
@@ -120,22 +115,6 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
-                    public void openOverlaySettings() {
-                        runOnUiThread(() -> {
-                            try {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            Uri.parse("package:" + getPackageName()));
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    startActivity(intent);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    }
-
-                    @JavascriptInterface
                     public void openXiaomiLockScreenPermission() {
                         runOnUiThread(() -> {
                             try {
@@ -149,28 +128,6 @@ public class MainActivity extends BridgeActivity {
                             }
                         });
                     }
-
-                    @JavascriptInterface
-                    public void openAppDetailsSettings() {
-                        runOnUiThread(() -> {
-                            try {
-                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                intent.setData(Uri.parse("package:" + getPackageName()));
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    }
-
-                    @JavascriptInterface
-                    public boolean isOverlayPermissionGranted() {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            return Settings.canDrawOverlays(MainActivity.this);
-                        }
-                        return true;
-                    }
                 }, "AndroidNativeConfig");
             }
         } catch (Exception e) {
@@ -178,8 +135,17 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    private void startBackgroundService() {
+        try {
+            Intent serviceIntent = new Intent(this, HeartbeatService.class);
+            ContextCompat.startForegroundService(this, serviceIntent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @SuppressLint("BatteryLife")
-    private void promptBatteryOptimizationExemption() {
+    public void promptBatteryOptimizationExemption() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -191,20 +157,11 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void startBackgroundService() {
-        try {
-            Intent intent = new Intent(this, HeartbeatService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                ContextCompat.startForegroundService(this, intent);
-            } else {
-                startService(intent);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            try {
+                Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception ignored) {}
         }
     }
 }
