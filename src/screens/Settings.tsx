@@ -173,6 +173,9 @@ function NotificationsSection() {
 
   async function handleTest() {
     try {
+      if (typeof (window as any).AndroidNativeConfig?.startLockScreenService === 'function') {
+        (window as any).AndroidNativeConfig.startLockScreenService();
+      }
       await showLocalNotification({
         title: '💖 Aanya & Me Test Alert',
         body: 'Instant notification received successfully!',
@@ -234,6 +237,9 @@ function NotificationsSection() {
               localStorage.setItem('aanya_lock_card_enabled', val ? '1' : '0');
               if (typeof (window as any).AndroidNativeConfig?.setLockScreenCardEnabled === 'function') {
                 (window as any).AndroidNativeConfig.setLockScreenCardEnabled(val);
+              }
+              if (val && typeof (window as any).AndroidNativeConfig?.startLockScreenService === 'function') {
+                (window as any).AndroidNativeConfig.startLockScreenService();
               }
             } catch {}
           }}

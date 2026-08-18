@@ -42,7 +42,7 @@ import org.json.JSONObject;
  * and live showWhenLocked Doodle access.
  */
 public class HeartbeatService extends Service {
-    public static final String LOCK_CONTROLS_CHANNEL_ID = "aanya_lock_controls";
+    public static final String LOCK_CONTROLS_CHANNEL_ID = "aanya_lock_controls_v2";
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
 
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
@@ -95,19 +95,32 @@ public class HeartbeatService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && "ACTION_UPDATE_NOTIFICATION".equals(intent.getAction())) {
-            try {
-                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                if (nm != null) {
-                    nm.notify(1001, buildForegroundNotification());
-                }
-            } catch (Exception ignored) {}
-            return START_STICKY;
+        createNotificationChannels();
+        try {
+            Notification fgNotif = buildForegroundNotification();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1001, fgNotif, 0);
+            } else {
+                startForeground(1001, fgNotif);
+            }
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.notify(1001, fgNotif);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         if (!isRunning) {
             isRunning = true;
             connectRealtimeWebSocket();
+            startHeartbeatPing();
+            startFallbackDaemon();
+        }
+        return START_STICKY;
+    }
             startHeartbeatPing();
             startFallbackDaemon();
         }
@@ -361,11 +374,18 @@ public class HeartbeatService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
-                // 1. Persistent Lock-Screen Controls Channel (Silent, ongoing, public lockscreen)
+                // Delete any old silent/low-importance channel from previous versions
+                try {
+                    nm.deleteNotificationChannel("aanya_lock_controls");
+                    nm.deleteNotificationChannel("aanya_lock_card_v6");
+                    nm.deleteNotificationChannel("aanya_lock_card_v5");
+                } catch (Exception ignored) {}
+
+                // 1. Persistent Lock-Screen Controls Channel (IMPORTANCE_DEFAULT, silent, visible card on lockscreen)
                 NotificationChannel controlsChannel = new NotificationChannel(
                         LOCK_CONTROLS_CHANNEL_ID,
                         "Aanya & Me Lock-Screen Controls",
-                        NotificationManager.IMPORTANCE_LOW
+                        NotificationManager.IMPORTANCE_DEFAULT
                 );
                 controlsChannel.setDescription("Persistent quick actions and live doodle access on your lock screen");
                 controlsChannel.setShowBadge(false);
