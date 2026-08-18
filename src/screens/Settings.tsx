@@ -24,7 +24,7 @@ import {
   Plus,
   Bell,
 } from 'lucide-react';
-import { requestNotifPermission, showLocalNotification, notifSupported } from '@/lib/notifications';
+import { requestNotifPermission, notifPermission, showLocalNotification, notifSupported } from '@/lib/notifications';
 
 type Section = 'profile' | 'connection' | 'messages' | 'notifications' | 'appearance' | 'location' | 'storage' | 'privacy' | 'about';
 

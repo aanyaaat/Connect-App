@@ -33,6 +33,7 @@ public class LockScreenDoodleActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
             );
         }
 
@@ -49,6 +50,7 @@ public class LockScreenDoodleActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.setWebViewClient(new WebViewClient());
         webView.setBackgroundColor(0xFF170610);
@@ -76,7 +78,7 @@ public class LockScreenDoodleActivity extends Activity {
 
         setContentView(root);
 
-        // Load local bundle or live web doodle canvas
+        // Load live web doodle canvas with local fallback
         webView.loadUrl("https://aanya-and-me.pages.dev/?screen=doodle");
     }
 
