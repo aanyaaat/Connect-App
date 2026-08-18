@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 public class HeartbeatService extends Service {
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
-    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_controls_v4";
+    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_card_v6";
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
     private static final String SUPABASE_WS_URL = "wss://sipvivbfdjewxntlbpzt.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY&vsn=1.0.0";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
@@ -430,10 +430,13 @@ public class HeartbeatService extends Service {
                 NotificationChannel statusChannel = new NotificationChannel(
                         FOREGROUND_CHANNEL_ID,
                         "Lock Screen Quick Controls",
-                        NotificationManager.IMPORTANCE_DEFAULT
+                        NotificationManager.IMPORTANCE_HIGH
                 );
                 statusChannel.setDescription("Allows sending quick messages & doodling straight from lock screen without unlocking");
-                statusChannel.setShowBadge(false);
+                statusChannel.setShowBadge(true);
+                statusChannel.enableLights(true);
+                statusChannel.setLightColor(0xFFFF1493);
+                statusChannel.setSound(null, null);
                 statusChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 nm.createNotificationChannel(statusChannel);
             }
@@ -451,6 +454,7 @@ public class HeartbeatService extends Service {
 
         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
         String partnerName = prefs.getString("partner_name", "Aanya");
+        boolean cardEnabled = prefs.getBoolean("lockscreen_card_enabled", true);
 
         // Action 1: ❤️ Send Love
         Intent quick1Intent = new Intent(this, QuickActionReceiver.class);
@@ -470,22 +474,27 @@ public class HeartbeatService extends Service {
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
 
-        return new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected to " + partnerName + " ❤️")
                 .setContentText("Tap below to send quick love without unlocking")
                 .setStyle(new NotificationCompat.BigTextStyle()
                         .bigText("Tap below to send quick love or open live shared doodle canvas directly from your lock screen!"))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setShowWhen(false)
                 .setOngoing(true)
-                .setContentIntent(pi)
-                .addAction(android.R.drawable.ic_menu_send, quick1Label, quick1Pending)
-                .addAction(android.R.drawable.ic_menu_send, quick2Label, quick2Pending)
-                .addAction(android.R.drawable.ic_menu_edit, "🎨 Doodle", doodlePending)
-                .build();
+                .setOnlyAlertOnce(true)
+                .setContentIntent(pi);
+
+        if (cardEnabled) {
+            builder.addAction(android.R.drawable.ic_menu_send, quick1Label, quick1Pending)
+                   .addAction(android.R.drawable.ic_menu_send, quick2Label, quick2Pending)
+                   .addAction(android.R.drawable.ic_menu_edit, "🎨 Doodle", doodlePending);
+        }
+
+        return builder.build();
     }
 
     private void registerScreenStateReceiver() {

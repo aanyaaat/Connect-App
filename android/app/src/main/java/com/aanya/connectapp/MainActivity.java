@@ -77,6 +77,13 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
+                    public void setLockScreenCardEnabled(boolean enabled) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit().putBoolean("lockscreen_card_enabled", enabled).apply();
+                        HeartbeatService.updateNotification(MainActivity.this);
+                    }
+
+                    @JavascriptInterface
                     public boolean isBatteryOptimizationIgnored() {
                         try {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

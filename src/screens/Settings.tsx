@@ -179,6 +179,14 @@ function NotificationsSection() {
     }
   }
 
+  const [lockCardEnabled, setLockCardEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aanya_lock_card_enabled') !== '0';
+    } catch {
+      return true;
+    }
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-4 bg-gradient-to-br from-card to-accent-soft/20">
@@ -202,6 +210,29 @@ function NotificationsSection() {
           {statusMsg}
         </p>
       )}
+
+      {/* 🔒 Feature Toggle: Lock-Screen Card & Doodle Controls */}
+      <div className="card p-3.5 bg-gradient-to-br from-card via-accent-soft/15 to-card border border-accent/40 flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-xl">🔒</span>
+          <div>
+            <p className="text-xs font-bold text-fg">Lock-Screen Card &amp; Live Doodle</p>
+            <p className="text-[11px] text-muted">Show 3 quick actions and doodle pinned on lock screen</p>
+          </div>
+        </div>
+        <Toggle
+          checked={lockCardEnabled}
+          onChange={(val) => {
+            setLockCardEnabled(val);
+            try {
+              localStorage.setItem('aanya_lock_card_enabled', val ? '1' : '0');
+              if (typeof (window as any).AndroidNativeConfig?.setLockScreenCardEnabled === 'function') {
+                (window as any).AndroidNativeConfig.setLockScreenCardEnabled(val);
+              }
+            } catch {}
+          }}
+        />
+      </div>
 
       {!granted && (
         <Button onClick={handleRequest} className="w-full">
