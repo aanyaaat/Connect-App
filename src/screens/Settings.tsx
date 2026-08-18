@@ -117,14 +117,27 @@ function SettingsModal({ section, onClose }: { section: Section; onClose: () => 
 }
 
 function NotificationsSection() {
-  const [granted, setGranted] = useState<boolean>(
-    typeof Notification !== 'undefined' && Notification.permission === 'granted'
-  );
+  const [granted, setGranted] = useState<boolean>(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') return true;
+    return localStorage.getItem('aanya_notif_granted') === '1';
+  });
   const [testSent, setTestSent] = useState(false);
+
+  useEffect(() => {
+    notifPermission().then((p) => {
+      if (p === 'granted') {
+        setGranted(true);
+        localStorage.setItem('aanya_notif_granted', '1');
+      }
+    });
+  }, []);
 
   async function handleRequest() {
     const res = await requestNotifPermission();
-    if (res === 'granted') setGranted(true);
+    if (res === 'granted') {
+      setGranted(true);
+      localStorage.setItem('aanya_notif_granted', '1');
+    }
   }
 
   async function handleTest() {
@@ -149,13 +162,13 @@ function NotificationsSection() {
             <p className="text-xs text-muted">
               {granted
                 ? 'System notifications are ACTIVE and enabled! 🎉'
-                : 'Allow notifications to receive pokes & arrival alerts'}
+                : 'Allow notifications to receive pokes & lock-screen controls'}
             </p>
           </div>
         </div>
       </div>
 
-      {!granted && notifSupported() && (
+      {!granted && (
         <Button onClick={handleRequest} className="w-full">
           <Bell className="h-4 w-4" />
           <span>Enable Notifications on this Device</span>
@@ -163,8 +176,23 @@ function NotificationsSection() {
       )}
 
       <Button variant="outline" onClick={handleTest} className="w-full">
-        <span>{testSent ? 'Notification Sent! Check your status bar / screen ❤️' : 'Send Test Notification'}</span>
+        <span>{testSent ? 'Notification Sent! Check your status bar / lock screen ❤️' : 'Send Test Notification'}</span>
       </Button>
+
+      {/* 🔒 Live Lock-Screen Quick Action Controls Guide */}
+      <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🔒</span>
+          <div>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Lock-Screen Controls (No Unlock Needed)</p>
+            <p className="text-[11px] text-muted">Always pinned on your lock screen like music controls</p>
+          </div>
+        </div>
+        <div className="rounded-xl bg-card p-2.5 text-xs text-fg flex flex-col gap-1.5 border border-border/50">
+          <p>• <b>❤️ Love / ✨ Miss You</b>: Tap directly on lock screen to send instant love with haptic confirmation without unlocking.</p>
+          <p>• <b>🎨 Doodle</b>: Tap on lock screen to open the live shared drawing canvas directly over lock screen without typing passcode!</p>
+        </div>
+      </div>
 
       {/* 🔘 Triple Power Button Quick Message Configuration */}
       <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-2.5">
