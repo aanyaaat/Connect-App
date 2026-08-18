@@ -31,6 +31,11 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const channelRef = useRef<any>(null);
 
+  const bridgeUserId = typeof (window as any).AndroidDoodleBridge?.getUserId === 'function' ? (window as any).AndroidDoodleBridge.getUserId() : null;
+  const bridgeConnId = typeof (window as any).AndroidDoodleBridge?.getConnectionId === 'function' ? (window as any).AndroidDoodleBridge.getConnectionId() : null;
+  const effectiveUserId = user?.id || bridgeUserId || (typeof localStorage !== 'undefined' ? localStorage.getItem('aanya_saved_display_name') : null) || 'anonymous';
+  const effectiveConnId = connection?.id || bridgeConnId || (typeof localStorage !== 'undefined' ? localStorage.getItem('aanya_connection_id') : null);
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -43,19 +48,19 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
 
   // Set up real-time bidirectional doodle channel
   useEffect(() => {
-    if (!connection || !user) return;
+    if (!effectiveConnId || !effectiveUserId) return;
 
-    const channel = supabase.channel(`doodle_${connection.id}`);
+    const channel = supabase.channel(`doodle_${effectiveConnId}`);
     channel
       .on('broadcast', { event: 'doodle_stroke' }, ({ payload }) => {
-        if (payload.sender_id !== user.id) {
+        if (payload.sender_id !== effectiveUserId) {
           drawRemoteStroke(payload.stroke);
           setPartnerDrawing(true);
           setTimeout(() => setPartnerDrawing(false), 500);
         }
       })
       .on('broadcast', { event: 'doodle_clear' }, ({ payload }) => {
-        if (payload.sender_id !== user.id) {
+        if (payload.sender_id !== effectiveUserId) {
           clearLocalCanvas();
         }
       })
@@ -66,7 +71,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [connection, user]);
+  }, [effectiveConnId, effectiveUserId]);
 
   // Adjust canvas resolution for high DPI displays and initialize with white background
   useEffect(() => {
@@ -165,12 +170,12 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
     ctx.stroke();
 
     // Broadcast stroke to partner
-    if (channelRef.current && user) {
+    if (channelRef.current && effectiveUserId) {
       channelRef.current.send({
         type: 'broadcast',
         event: 'doodle_stroke',
         payload: {
-          sender_id: user.id,
+          sender_id: effectiveUserId,
           stroke: {
             fromX: lastPosRef.current.x / rect.width,
             fromY: lastPosRef.current.y / rect.height,

@@ -86,7 +86,8 @@ public class QuickActionReceiver extends BroadcastReceiver {
             }
         } catch (Exception ignored) {}
 
-        // 2. Dispatch Quick Message Event to Supabase asynchronously
+        // 2. Dispatch Quick Message Event to Supabase asynchronously with goAsync()
+        final PendingResult pendingResult = goAsync();
         executor.execute(() -> {
             try {
                 JSONObject payload = new JSONObject();
@@ -114,6 +115,10 @@ public class QuickActionReceiver extends BroadcastReceiver {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    pendingResult.finish();
+                } catch (Exception ignored) {}
             }
         });
     }
