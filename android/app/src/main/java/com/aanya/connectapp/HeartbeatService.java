@@ -481,15 +481,17 @@ public class HeartbeatService extends Service {
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+        // Built on ALERT_CHANNEL_ID (the exact high-priority channel verified to show on lock screen)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected to " + partnerName + " ❤️")
-                .setContentText("Tap below to send quick love without unlocking")
+                .setContentText("Tap below to send quick love or doodle without unlocking")
                 .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText("Tap below to send quick love or open live shared doodle canvas directly from your lock screen!"))
+                        .bigText("Tap ❤️ Love or ✨ Miss You to send love instantly without unlocking, or tap 🎨 Doodle to draw live!"))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setFullScreenIntent(pi, true)
                 .setShowWhen(false)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
