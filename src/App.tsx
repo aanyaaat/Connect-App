@@ -23,9 +23,9 @@ function Router() {
 
   // Universal Back Navigation (Hardware back button, Browser history, and Escape key)
   useEffect(() => {
-    let backListener: any;
+    let backHandle: any = null;
     try {
-      backListener = CapApp.addListener('backButton', () => {
+      CapApp.addListener('backButton', () => {
         setScreen((current) => {
           if (current !== 'home') {
             return 'home';
@@ -33,7 +33,9 @@ function Router() {
           CapApp.exitApp();
           return 'home';
         });
-      });
+      }).then((handle) => {
+        backHandle = handle;
+      }).catch(() => {});
     } catch (e) {
       // Running on web/PWA
     }
@@ -51,9 +53,11 @@ function Router() {
     window.addEventListener('popstate', handlePopState);
 
     return () => {
-      if (backListener && typeof backListener.remove === 'function') {
-        backListener.remove();
-      }
+      try {
+        if (backHandle && typeof backHandle.remove === 'function') {
+          backHandle.remove();
+        }
+      } catch {}
       window.removeEventListener('keydown', handleKey);
       window.removeEventListener('popstate', handlePopState);
     };
