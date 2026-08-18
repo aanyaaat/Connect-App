@@ -69,7 +69,7 @@
         <receiver
             android:name=".QuickActionReceiver"
             android:enabled="true"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.aanya.connectapp.ACTION_QUICK_1" />
                 <action android:name="com.aanya.connectapp.ACTION_QUICK_2" />
@@ -83,7 +83,7 @@
             android:label="Aanya &amp; Me Doodle"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:exported="false"
+            android:exported="true"
             android:theme="@android:style/Theme.NoTitleBar"
             android:launchMode="singleTask" />
     </application>
