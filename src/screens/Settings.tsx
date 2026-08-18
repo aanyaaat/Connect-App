@@ -250,13 +250,14 @@ function NotificationsSection() {
         <div className="flex items-center gap-2">
           <span className="text-base">🔒</span>
           <div>
-            <p className="text-xs font-bold text-fg uppercase tracking-wider">Lock-Screen Controls (No Unlock Needed)</p>
-            <p className="text-[11px] text-muted">Always pinned on your lock screen like music controls</p>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Permanent Lock-Screen Card &amp; Gestures</p>
+            <p className="text-[11px] text-muted">Directly on lock screen window (no shade pull-down needed!)</p>
           </div>
         </div>
-        <div className="rounded-xl bg-card p-2.5 text-xs text-fg flex flex-col gap-1.5 border border-border/50">
-          <p>• <b>❤️ Love / ✨ Miss You</b>: Tap directly on lock screen to send instant love with haptic confirmation without unlocking.</p>
-          <p>• <b>🎨 Doodle</b>: Tap on lock screen to open the live shared drawing canvas directly over lock screen without typing passcode!</p>
+        <div className="rounded-xl bg-card p-2.5 text-xs text-fg flex flex-col gap-2 border border-border/50">
+          <p>• <b>📱 Floating Lock-Screen Card</b>: When screen wakes, a luxury card appears directly over your lock screen with 3 actions (❤️ Love, ✨ Miss You, 🎨 Doodle). Disappears automatically when unlocked.</p>
+          <p>• <b>🎨 Lock-Screen Live Doodle</b>: Tap "🎨 Doodle" to draw and interact on the live shared canvas directly above your lock screen without entering your password or PIN.</p>
+          <p>• <b>⚡ Volume Up + Power Button Shortcut</b>: Press Volume Up + Power Button (or 2 quick Volume Up clicks) while screen is locked to send instant love in the background with haptic pulses (no Android SOS dialog!).</p>
         </div>
       </div>
 

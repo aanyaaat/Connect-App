@@ -71,7 +71,13 @@ public class HeartbeatService extends Service {
 
         createNotificationChannels();
 
-        // 2. Start foreground notification for 24/7 keep-alive
+        // 2. Start permanent Lock Screen Overlay Service (Floating Glass Card over lockscreen)
+        try {
+            Intent overlayIntent = new Intent(this, LockScreenOverlayService.class);
+            startService(overlayIntent);
+        } catch (Exception ignored) {}
+
+        // 3. Start foreground notification for 24/7 keep-alive
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -83,10 +89,10 @@ public class HeartbeatService extends Service {
             e.printStackTrace();
         }
 
-        // 3. Register power button / screen on/off listener
+        // 4. Register power button / screen on/off listener
         registerScreenStateReceiver();
 
-        // 4. Initialize Modern OkHttpClient with automatic TCP keep-alive
+        // 5. Initialize Modern OkHttpClient with automatic TCP keep-alive
         okHttpClient = new OkHttpClient.Builder()
                 .pingInterval(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -497,6 +503,8 @@ public class HeartbeatService extends Service {
         return builder.build();
     }
 
+    private final List<Long> volumePressTimestamps = new ArrayList<>();
+
     private void registerScreenStateReceiver() {
         try {
             if (screenReceiver == null) {
@@ -504,6 +512,7 @@ public class HeartbeatService extends Service {
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(Intent.ACTION_SCREEN_ON);
                 filter.addAction(Intent.ACTION_SCREEN_OFF);
+                filter.addAction("android.media.VOLUME_CHANGED_ACTION");
                 registerReceiver(screenReceiver, filter);
             }
         } catch (Exception e) {
@@ -514,10 +523,30 @@ public class HeartbeatService extends Service {
     private class ScreenStateReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (intent == null || intent.getAction() == null) return;
             String action = intent.getAction();
             if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
                 handlePowerPress();
+            } else if ("android.media.VOLUME_CHANGED_ACTION".equals(action)) {
+                handleVolumePress();
             }
+        }
+    }
+
+    private synchronized void handleVolumePress() {
+        long now = System.currentTimeMillis();
+        volumePressTimestamps.add(now);
+
+        while (!volumePressTimestamps.isEmpty() && (now - volumePressTimestamps.get(0) > 2500)) {
+            volumePressTimestamps.remove(0);
+        }
+
+        // Trigger on Volume Up + Power button combo OR double volume press (no emergency SOS trigger!)
+        boolean powerJustPressed = !powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(powerPressTimestamps.size() - 1) < 2500);
+        if (powerJustPressed || volumePressTimestamps.size() >= 2) {
+            volumePressTimestamps.clear();
+            powerPressTimestamps.clear();
+            triggerTriplePowerQuickMessage();
         }
     }
 
@@ -529,7 +558,10 @@ public class HeartbeatService extends Service {
             powerPressTimestamps.remove(0);
         }
 
-        if (powerPressTimestamps.size() >= 4) {
+        // If volume button was just pressed along with power button, trigger combo
+        boolean volumeJustPressed = !volumePressTimestamps.isEmpty() && (now - volumePressTimestamps.get(volumePressTimestamps.size() - 1) < 2500);
+        if (volumeJustPressed) {
+            volumePressTimestamps.clear();
             powerPressTimestamps.clear();
             triggerTriplePowerQuickMessage();
         }

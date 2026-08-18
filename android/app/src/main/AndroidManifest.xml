@@ -86,6 +86,12 @@
             android:exported="true"
             android:theme="@android:style/Theme.NoTitleBar"
             android:launchMode="singleTask" />
+
+        <!-- Permanent Lock Screen Card Overlay Service -->
+        <service
+            android:name=".LockScreenOverlayService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
     <!-- Permissions -->
