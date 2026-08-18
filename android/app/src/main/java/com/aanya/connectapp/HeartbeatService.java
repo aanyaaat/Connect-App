@@ -444,36 +444,37 @@ public class HeartbeatService extends Service {
         String partnerName = prefs.getString("partner_name", "Aanya");
         boolean cardEnabled = prefs.getBoolean("lockscreen_card_enabled", true);
 
-        // Action 1: ❤️ Send Quick Message 1
+        // Action 1: Send Quick Message 1
         Intent quick1Intent = new Intent(this, QuickActionReceiver.class);
         quick1Intent.setAction(QuickActionReceiver.ACTION_QUICK_1);
         PendingIntent quick1Pending = PendingIntent.getBroadcast(this, 101, quick1Intent, flags);
 
-        // Action 2: ✨ Send Quick Message 2
+        // Action 2: Send Quick Message 2
         Intent quick2Intent = new Intent(this, QuickActionReceiver.class);
         quick2Intent.setAction(QuickActionReceiver.ACTION_QUICK_2);
         PendingIntent quick2Pending = PendingIntent.getBroadcast(this, 102, quick2Intent, flags);
 
-        // Action 3: 🎨 Live showWhenLocked Doodle Activity
-        Intent doodleIntent = new Intent(this, LockScreenDoodleActivity.class);
-        doodleIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent doodlePending = PendingIntent.getActivity(this, 103, doodleIntent, flags);
+        // Action 3: Send Quick Message 3
+        Intent quick3Intent = new Intent(this, QuickActionReceiver.class);
+        quick3Intent.setAction(QuickActionReceiver.ACTION_QUICK_3);
+        PendingIntent quick3Pending = PendingIntent.getBroadcast(this, 103, quick3Intent, flags);
 
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
+        String quick3Label = prefs.getString("quick_3_label", "🤗 Hug");
 
-        // 1. Collapsed / Compact RemoteViews (Exposes all 3 buttons without expanding)
+        // 1. Collapsed / Compact RemoteViews (Exposes all 3 customizable buttons without expanding)
         RemoteViews compactViews = new RemoteViews(getPackageName(), R.layout.notification_lock_compact);
         compactViews.setTextViewText(R.id.notif_title, "Aanya & Me");
         compactViews.setTextViewText(R.id.notif_subtitle, "Connected with " + partnerName + " ❤️");
         compactViews.setTextViewText(R.id.notif_status, "Connected ❤️");
         compactViews.setTextViewText(R.id.btn_notif_quick_1, quick1Label);
         compactViews.setTextViewText(R.id.btn_notif_quick_2, quick2Label);
-        compactViews.setTextViewText(R.id.btn_notif_doodle, "🎨 Doodle");
+        compactViews.setTextViewText(R.id.btn_notif_quick_3, quick3Label);
 
         compactViews.setOnClickPendingIntent(R.id.btn_notif_quick_1, quick1Pending);
         compactViews.setOnClickPendingIntent(R.id.btn_notif_quick_2, quick2Pending);
-        compactViews.setOnClickPendingIntent(R.id.btn_notif_doodle, doodlePending);
+        compactViews.setOnClickPendingIntent(R.id.btn_notif_quick_3, quick3Pending);
 
         // 2. Expanded RemoteViews (Spacious layout with rich descriptions)
         RemoteViews expandedViews = new RemoteViews(getPackageName(), R.layout.notification_lock_expanded);
@@ -482,11 +483,11 @@ public class HeartbeatService extends Service {
         expandedViews.setTextViewText(R.id.notif_status_exp, "Connected ❤️");
         expandedViews.setTextViewText(R.id.btn_notif_quick_1_exp, quick1Label);
         expandedViews.setTextViewText(R.id.btn_notif_quick_2_exp, quick2Label);
-        expandedViews.setTextViewText(R.id.btn_notif_doodle_exp, "🎨 Doodle");
+        expandedViews.setTextViewText(R.id.btn_notif_quick_3_exp, quick3Label);
 
         expandedViews.setOnClickPendingIntent(R.id.btn_notif_quick_1_exp, quick1Pending);
         expandedViews.setOnClickPendingIntent(R.id.btn_notif_quick_2_exp, quick2Pending);
-        expandedViews.setOnClickPendingIntent(R.id.btn_notif_doodle_exp, doodlePending);
+        expandedViews.setOnClickPendingIntent(R.id.btn_notif_quick_3_exp, quick3Pending);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, LOCK_CONTROLS_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -507,7 +508,7 @@ public class HeartbeatService extends Service {
         if (cardEnabled) {
             builder.addAction(android.R.drawable.ic_menu_send, quick1Label, quick1Pending)
                    .addAction(android.R.drawable.ic_menu_send, quick2Label, quick2Pending)
-                   .addAction(android.R.drawable.ic_menu_edit, "🎨 Doodle", doodlePending);
+                   .addAction(android.R.drawable.ic_menu_send, quick3Label, quick3Pending);
         }
 
         return builder.build();

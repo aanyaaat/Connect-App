@@ -220,6 +220,34 @@ function NotificationsSection() {
     }
   });
 
+  const [q1, setQ1] = useState<{ label: string; emoji: string; text: string }>({
+    label: '❤️ Love',
+    emoji: '❤️',
+    text: 'Thinking of you ❤️',
+  });
+  const [q2, setQ2] = useState<{ label: string; emoji: string; text: string }>({
+    label: '✨ Miss You',
+    emoji: '✨',
+    text: 'Miss you so much ✨',
+  });
+  const [q3, setQ3] = useState<{ label: string; emoji: string; text: string }>({
+    label: '🤗 Hug',
+    emoji: '🤗',
+    text: 'Sending you a warm hug 🤗',
+  });
+
+  const PRESETS = [
+    { label: '❤️ Love', emoji: '❤️', text: 'Thinking of you ❤️' },
+    { label: '✨ Miss You', emoji: '✨', text: 'Miss you so much ✨' },
+    { label: '🤗 Hug', emoji: '🤗', text: 'Sending you a warm hug 🤗' },
+    { label: '💋 Kiss', emoji: '💋', text: 'Sending sweet kisses 💋' },
+    { label: '☕ Thinking', emoji: '☕', text: 'Just thinking about you ☕' },
+    { label: '🏠 Home', emoji: '🏠', text: "I've reached home safely 🏠" },
+    { label: '🚗 On My Way', emoji: '🚗', text: 'On my way to you 🚗' },
+    { label: '💖 Love You', emoji: '💖', text: 'I love you so much 💖' },
+    { label: '😴 Goodnight', emoji: '😴', text: 'Sweet dreams and sleep tight 😴' },
+  ];
+
   // Sync latest persisted settings from Android native SharedPreferences
   useEffect(() => {
     try {
@@ -230,26 +258,47 @@ function NotificationsSection() {
           setLockControlsEnabled(val);
           localStorage.setItem('lock_controls_enabled', val ? '1' : '0');
         }
-        if (typeof bridge.getLockDoodleEnabled === 'function') {
-          const val = bridge.getLockDoodleEnabled();
-          setLockDoodleEnabled(val);
-          localStorage.setItem('lock_doodle_enabled', val ? '1' : '0');
-        }
         if (typeof bridge.getLockMessagesEnabled === 'function') {
           const val = bridge.getLockMessagesEnabled();
           setLockMessagesEnabled(val);
           localStorage.setItem('lock_messages_enabled', val ? '1' : '0');
         }
-        if (typeof bridge.getLockSuggestionsEnabled === 'function') {
-          const val = bridge.getLockSuggestionsEnabled();
-          setLockSuggestionsEnabled(val);
-          localStorage.setItem('lock_suggestions_enabled', val ? '1' : '0');
+        if (typeof bridge.getQuickActionsJson === 'function') {
+          const data = JSON.parse(bridge.getQuickActionsJson());
+          if (data.q1Label) setQ1({ label: data.q1Label, emoji: data.q1Emoji, text: data.q1Text });
+          if (data.q2Label) setQ2({ label: data.q2Label, emoji: data.q2Emoji, text: data.q2Text });
+          if (data.q3Label) setQ3({ label: data.q3Label, emoji: data.q3Emoji, text: data.q3Text });
         }
       }
     } catch (e) {
       console.warn('Syncing lockscreen prefs from native bridge failed', e);
     }
   }, []);
+
+  const saveActions = (newQ1 = q1, newQ2 = q2, newQ3 = q3) => {
+    setQ1(newQ1);
+    setQ2(newQ2);
+    setQ3(newQ3);
+    try {
+      localStorage.setItem('aanya_quick_actions_v3', JSON.stringify({ q1: newQ1, q2: newQ2, q3: newQ3 }));
+      const bridge = (window as any).AndroidNativeConfig;
+      if (bridge && typeof bridge.saveQuickActions === 'function') {
+        bridge.saveQuickActions(
+          newQ1.text,
+          newQ1.emoji,
+          newQ1.label,
+          newQ2.text,
+          newQ2.emoji,
+          newQ2.label,
+          newQ3.text,
+          newQ3.emoji,
+          newQ3.label,
+        );
+      }
+      setStatusMsg('Lock-screen buttons updated! ❤️');
+      setTimeout(() => setStatusMsg(''), 2500);
+    } catch {}
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -285,12 +334,12 @@ function NotificationsSection() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 pt-1 border-t border-border/40">
+        <div className="flex flex-col gap-3 pt-1 border-t border-border/40">
           {/* 1. Main Lock-Screen Controls */}
           <div className="flex items-center justify-between gap-3 p-1">
             <div>
               <p className="text-xs font-bold text-fg">Quick Moments Card</p>
-              <p className="text-[11px] text-muted">Keep Love, Miss You, and Doodle controls directly on your lock screen</p>
+              <p className="text-[11px] text-muted">Keep 3 instant action buttons directly on your lock screen</p>
             </div>
             <Toggle
               checked={lockControlsEnabled}
@@ -325,6 +374,80 @@ function NotificationsSection() {
               }}
             />
           </div>
+
+          {/* 3. Choose Custom Lock-Screen Buttons */}
+          {lockControlsEnabled && (
+            <div className="flex flex-col gap-2.5 pt-2 border-t border-border/30">
+              <p className="text-xs font-bold text-fg">Choose Lock-Screen Buttons</p>
+              <p className="text-[11px] text-muted">Pick what each of the 3 lock-screen buttons sends when tapped:</p>
+
+              {/* Slot 1 */}
+              <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-accent">Button 1 (Left)</span>
+                  <span className="text-xs font-semibold text-fg">{q1.label}</span>
+                </div>
+                <select
+                  value={q1.label}
+                  onChange={(e) => {
+                    const preset = PRESETS.find((p) => p.label === e.target.value);
+                    if (preset) saveActions(preset, q2, q3);
+                  }}
+                  className="w-full text-xs p-1.5 rounded-lg bg-bg border border-border/60 text-fg"
+                >
+                  {PRESETS.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label} — "{p.text}"
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Slot 2 */}
+              <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-accent">Button 2 (Center)</span>
+                  <span className="text-xs font-semibold text-fg">{q2.label}</span>
+                </div>
+                <select
+                  value={q2.label}
+                  onChange={(e) => {
+                    const preset = PRESETS.find((p) => p.label === e.target.value);
+                    if (preset) saveActions(q1, preset, q3);
+                  }}
+                  className="w-full text-xs p-1.5 rounded-lg bg-bg border border-border/60 text-fg"
+                >
+                  {PRESETS.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label} — "{p.text}"
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Slot 3 */}
+              <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-accent">Button 3 (Right)</span>
+                  <span className="text-xs font-semibold text-fg">{q3.label}</span>
+                </div>
+                <select
+                  value={q3.label}
+                  onChange={(e) => {
+                    const preset = PRESETS.find((p) => p.label === e.target.value);
+                    if (preset) saveActions(q1, q2, preset);
+                  }}
+                  className="w-full text-xs p-1.5 rounded-lg bg-bg border border-border/60 text-fg"
+                >
+                  {PRESETS.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label} — "{p.text}"
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

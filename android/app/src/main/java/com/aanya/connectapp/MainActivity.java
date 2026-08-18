@@ -58,7 +58,7 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
-                    public void saveQuickActions(String q1Text, String q1Emoji, String q1Label, String q2Text, String q2Emoji, String q2Label) {
+                    public void saveQuickActions(String q1Text, String q1Emoji, String q1Label, String q2Text, String q2Emoji, String q2Label, String q3Text, String q3Emoji, String q3Label) {
                         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
                         prefs.edit()
                                 .putString("quick_1_text", q1Text)
@@ -67,8 +67,36 @@ public class MainActivity extends BridgeActivity {
                                 .putString("quick_2_text", q2Text)
                                 .putString("quick_2_emoji", q2Emoji)
                                 .putString("quick_2_label", q2Label)
+                                .putString("quick_3_text", q3Text)
+                                .putString("quick_3_emoji", q3Emoji)
+                                .putString("quick_3_label", q3Label)
                                 .apply();
                         HeartbeatService.updateNotification(MainActivity.this);
+                    }
+
+                    @JavascriptInterface
+                    public void saveQuickActions(String q1Text, String q1Emoji, String q1Label, String q2Text, String q2Emoji, String q2Label) {
+                        saveQuickActions(q1Text, q1Emoji, q1Label, q2Text, q2Emoji, q2Label, "Sending you a warm hug 🤗", "🤗", "🤗 Hug");
+                    }
+
+                    @JavascriptInterface
+                    public String getQuickActionsJson() {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        try {
+                            org.json.JSONObject json = new org.json.JSONObject();
+                            json.put("q1Text", prefs.getString("quick_1_text", "Thinking of you ❤️"));
+                            json.put("q1Emoji", prefs.getString("quick_1_emoji", "❤️"));
+                            json.put("q1Label", prefs.getString("quick_1_label", "❤️ Love"));
+                            json.put("q2Text", prefs.getString("quick_2_text", "Miss you so much ✨"));
+                            json.put("q2Emoji", prefs.getString("quick_2_emoji", "✨"));
+                            json.put("q2Label", prefs.getString("quick_2_label", "✨ Miss You"));
+                            json.put("q3Text", prefs.getString("quick_3_text", "Sending you a warm hug 🤗"));
+                            json.put("q3Emoji", prefs.getString("quick_3_emoji", "🤗"));
+                            json.put("q3Label", prefs.getString("quick_3_label", "🤗 Hug"));
+                            return json.toString();
+                        } catch (Exception ignored) {
+                            return "{}";
+                        }
                     }
 
                     @JavascriptInterface

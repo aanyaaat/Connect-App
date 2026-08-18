@@ -100,16 +100,16 @@
             android:singleLine="true"
             android:ellipsize="end" />
 
-        <!-- Action 3: Live Doodle Canvas -->
+        <!-- Action 3: Quick Message 3 -->
         <TextView
-            android:id="@+id/btn_notif_doodle_exp"
+            android:id="@+id/btn_notif_quick_3_exp"
             android:layout_width="0dp"
             android:layout_height="38dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_notif_btn_accent"
+            android:background="@drawable/bg_notif_btn"
             android:gravity="center"
-            android:text="🎨 Doodle"
-            android:textColor="#FFF43F5E"
+            android:text="🤗 Hug"
+            android:textColor="#FFFFFFFF"
             android:textSize="12sp"
             android:textStyle="bold"
             android:paddingStart="4dp"
