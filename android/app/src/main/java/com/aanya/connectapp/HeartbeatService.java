@@ -127,20 +127,18 @@ public class HeartbeatService extends Service {
     public void refreshNotifications() {
         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
         boolean controlsEnabled = prefs.getBoolean("lock_controls_enabled", true);
-        boolean doodleEnabled = prefs.getBoolean("lock_doodle_enabled", true);
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
+
+        // Cancel legacy second doodle card if active
+        try {
+            nm.cancel(1002);
+        } catch (Exception ignored) {}
 
         if (controlsEnabled) {
             nm.notify(NOTIFICATION_ID_CONTROLS, buildForegroundNotification());
         } else {
             nm.cancel(NOTIFICATION_ID_CONTROLS);
-        }
-
-        if (doodleEnabled) {
-            nm.notify(NOTIFICATION_ID_DOODLE, buildDoodleNotification());
-        } else {
-            nm.cancel(NOTIFICATION_ID_DOODLE);
         }
     }
 
@@ -516,47 +514,17 @@ public class HeartbeatService extends Service {
     }
 
     /**
-     * Builds the dedicated second persistent Lock-Screen Doodle Card (Notification ID 1002).
-     */
-    private Notification buildDoodleNotification() {
-        Intent doodleIntent = new Intent(this, LockScreenDoodleActivity.class);
-        doodleIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent doodlePending = PendingIntent.getActivity(this, 104, doodleIntent, flags);
-
-        RemoteViews doodleViews = new RemoteViews(getPackageName(), R.layout.notification_doodle_card);
-        doodleViews.setTextViewText(R.id.doodle_notif_title, "Aanya & Me — Live Doodle");
-        doodleViews.setTextViewText(R.id.doodle_notif_subtitle, "Shared two-way canvas with your partner");
-        doodleViews.setOnClickPendingIntent(R.id.btn_doodle_card_draw, doodlePending);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, LOCK_CONTROLS_CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Aanya & Me — Live Doodle")
-                .setContentText("Tap to draw live on lock screen")
-                .setCustomContentView(doodleViews)
-                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setShowWhen(false)
-                .setOngoing(true)
-                .setAutoCancel(false)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(doodlePending);
-
-        return builder.build();
-    }
-
-    /**
      * Displays an audible/vibrating heads-up notification for incoming messages from partner.
      */
     private void showIncomingSystemNotification(String title, String body, String eventId) {
+        if (isAppInForeground) {
+            // User is actively inside the app looking at the screen, no need for heads-up notification
+            return;
+        }
+
         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
         boolean messagesEnabled = prefs.getBoolean("lock_messages_enabled", true);
-        if (!messagesEnabled && !isAppInForeground) {
+        if (!messagesEnabled) {
             // User disabled incoming lock-screen message notifications
             return;
         }

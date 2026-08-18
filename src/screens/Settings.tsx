@@ -290,7 +290,7 @@ function NotificationsSection() {
           <div className="flex items-center justify-between gap-3 p-1">
             <div>
               <p className="text-xs font-bold text-fg">Quick Moments Card</p>
-              <p className="text-[11px] text-muted">Keep Love, Miss You, and Doodle buttons on the lock screen</p>
+              <p className="text-[11px] text-muted">Keep Love, Miss You, and Doodle controls directly on your lock screen</p>
             </div>
             <Toggle
               checked={lockControlsEnabled}
@@ -306,27 +306,7 @@ function NotificationsSection() {
             />
           </div>
 
-          {/* 2. Lock-Screen Doodle Card */}
-          <div className="flex items-center justify-between gap-3 p-1 border-t border-border/30 pt-2">
-            <div>
-              <p className="text-xs font-bold text-fg">Dedicated Live Doodle Card</p>
-              <p className="text-[11px] text-muted">Keep a separate dedicated Doodle surface on the lock screen</p>
-            </div>
-            <Toggle
-              checked={lockDoodleEnabled}
-              onChange={(val) => {
-                setLockDoodleEnabled(val);
-                try {
-                  localStorage.setItem('lock_doodle_enabled', val ? '1' : '0');
-                  if (typeof (window as any).AndroidNativeConfig?.setLockDoodleEnabled === 'function') {
-                    (window as any).AndroidNativeConfig.setLockDoodleEnabled(val);
-                  }
-                } catch {}
-              }}
-            />
-          </div>
-
-          {/* 3. Messages on Lock Screen */}
+          {/* 2. Messages on Lock Screen */}
           <div className="flex items-center justify-between gap-3 p-1 border-t border-border/30 pt-2">
             <div>
               <p className="text-xs font-bold text-fg">Messages on Lock Screen</p>
@@ -340,26 +320,6 @@ function NotificationsSection() {
                   localStorage.setItem('lock_messages_enabled', val ? '1' : '0');
                   if (typeof (window as any).AndroidNativeConfig?.setLockMessagesEnabled === 'function') {
                     (window as any).AndroidNativeConfig.setLockMessagesEnabled(val);
-                  }
-                } catch {}
-              }}
-            />
-          </div>
-
-          {/* 4. Suggestions on Lock Screen */}
-          <div className="flex items-center justify-between gap-3 p-1 border-t border-border/30 pt-2">
-            <div>
-              <p className="text-xs font-bold text-fg">Suggestions on Lock Screen</p>
-              <p className="text-[11px] text-muted">Show gentle relationship suggestions and arrival alerts</p>
-            </div>
-            <Toggle
-              checked={lockSuggestionsEnabled}
-              onChange={(val) => {
-                setLockSuggestionsEnabled(val);
-                try {
-                  localStorage.setItem('lock_suggestions_enabled', val ? '1' : '0');
-                  if (typeof (window as any).AndroidNativeConfig?.setLockSuggestionsEnabled === 'function') {
-                    (window as any).AndroidNativeConfig.setLockSuggestionsEnabled(val);
                   }
                 } catch {}
               }}

@@ -163,6 +163,10 @@ export async function initializeNotificationSystem(
 export async function showLocalNotification(n: LocalNotif): Promise<void> {
   // Native Android Notification
   if (Capacitor.isNativePlatform()) {
+    // HeartbeatService natively manages incoming partner alerts to prevent duplicate notifications.
+    if (!n.isActionable && !n.tag?.startsWith('status_') && !n.tag?.startsWith('test_')) {
+      return;
+    }
     try {
       let id = Math.floor(Math.random() * 1000000);
       if (n.tag) {
