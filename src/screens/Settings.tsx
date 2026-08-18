@@ -220,6 +220,37 @@ function NotificationsSection() {
     }
   });
 
+  // Sync latest persisted settings from Android native SharedPreferences
+  useEffect(() => {
+    try {
+      const bridge = (window as any).AndroidNativeConfig;
+      if (bridge) {
+        if (typeof bridge.getLockControlsEnabled === 'function') {
+          const val = bridge.getLockControlsEnabled();
+          setLockControlsEnabled(val);
+          localStorage.setItem('lock_controls_enabled', val ? '1' : '0');
+        }
+        if (typeof bridge.getLockDoodleEnabled === 'function') {
+          const val = bridge.getLockDoodleEnabled();
+          setLockDoodleEnabled(val);
+          localStorage.setItem('lock_doodle_enabled', val ? '1' : '0');
+        }
+        if (typeof bridge.getLockMessagesEnabled === 'function') {
+          const val = bridge.getLockMessagesEnabled();
+          setLockMessagesEnabled(val);
+          localStorage.setItem('lock_messages_enabled', val ? '1' : '0');
+        }
+        if (typeof bridge.getLockSuggestionsEnabled === 'function') {
+          const val = bridge.getLockSuggestionsEnabled();
+          setLockSuggestionsEnabled(val);
+          localStorage.setItem('lock_suggestions_enabled', val ? '1' : '0');
+        }
+      }
+    } catch (e) {
+      console.warn('Syncing lockscreen prefs from native bridge failed', e);
+    }
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-4 bg-gradient-to-br from-card to-accent-soft/20">

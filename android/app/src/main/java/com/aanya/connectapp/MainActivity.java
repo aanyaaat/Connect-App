@@ -109,6 +109,30 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
+                    public boolean getLockControlsEnabled() {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        return prefs.getBoolean("lock_controls_enabled", true);
+                    }
+
+                    @JavascriptInterface
+                    public boolean getLockDoodleEnabled() {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        return prefs.getBoolean("lock_doodle_enabled", true);
+                    }
+
+                    @JavascriptInterface
+                    public boolean getLockMessagesEnabled() {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        return prefs.getBoolean("lock_messages_enabled", true);
+                    }
+
+                    @JavascriptInterface
+                    public boolean getLockSuggestionsEnabled() {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        return prefs.getBoolean("lock_suggestions_enabled", false);
+                    }
+
+                    @JavascriptInterface
                     public void startLockScreenService() {
                         startBackgroundService();
                         HeartbeatService.updateNotification(MainActivity.this);
