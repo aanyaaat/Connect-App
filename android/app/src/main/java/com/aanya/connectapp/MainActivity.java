@@ -73,12 +73,39 @@ public class MainActivity extends BridgeActivity {
 
                     @JavascriptInterface
                     public void setLockScreenCardEnabled(boolean enabled) {
+                        setLockControlsEnabled(enabled);
+                    }
+
+                    @JavascriptInterface
+                    public void setLockControlsEnabled(boolean enabled) {
                         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-                        prefs.edit().putBoolean("lockscreen_card_enabled", enabled).apply();
+                        prefs.edit().putBoolean("lock_controls_enabled", enabled).apply();
                         if (enabled) {
                             startBackgroundService();
                         }
                         HeartbeatService.updateNotification(MainActivity.this);
+                    }
+
+                    @JavascriptInterface
+                    public void setLockDoodleEnabled(boolean enabled) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit().putBoolean("lock_doodle_enabled", enabled).apply();
+                        if (enabled) {
+                            startBackgroundService();
+                        }
+                        HeartbeatService.updateNotification(MainActivity.this);
+                    }
+
+                    @JavascriptInterface
+                    public void setLockMessagesEnabled(boolean enabled) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit().putBoolean("lock_messages_enabled", enabled).apply();
+                    }
+
+                    @JavascriptInterface
+                    public void setLockSuggestionsEnabled(boolean enabled) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit().putBoolean("lock_suggestions_enabled", enabled).apply();
                     }
 
                     @JavascriptInterface

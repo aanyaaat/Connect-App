@@ -46,6 +46,9 @@ public class HeartbeatService extends Service {
     public static final String LOCK_CONTROLS_CHANNEL_ID = "aanya_lock_controls_v2";
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
 
+    public static final int NOTIFICATION_ID_CONTROLS = 1001;
+    public static final int NOTIFICATION_ID_DOODLE = 1002;
+
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
     private static final String SUPABASE_WS_URL = "wss://sipvivbfdjewxntlbpzt.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY&vsn=1.0.0";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
@@ -75,12 +78,13 @@ public class HeartbeatService extends Service {
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
-                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // API 29-33
-                startForeground(1001, fgNotif, 0);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif, 0);
             } else {
-                startForeground(1001, fgNotif);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif);
             }
+            refreshNotifications();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -100,16 +104,13 @@ public class HeartbeatService extends Service {
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(1001, fgNotif, 0);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif, 0);
             } else {
-                startForeground(1001, fgNotif);
+                startForeground(NOTIFICATION_ID_CONTROLS, fgNotif);
             }
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null) {
-                nm.notify(1001, fgNotif);
-            }
+            refreshNotifications();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -121,6 +122,26 @@ public class HeartbeatService extends Service {
             startFallbackDaemon();
         }
         return START_STICKY;
+    }
+
+    public void refreshNotifications() {
+        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+        boolean controlsEnabled = prefs.getBoolean("lock_controls_enabled", true);
+        boolean doodleEnabled = prefs.getBoolean("lock_doodle_enabled", true);
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        if (controlsEnabled) {
+            nm.notify(NOTIFICATION_ID_CONTROLS, buildForegroundNotification());
+        } else {
+            nm.cancel(NOTIFICATION_ID_CONTROLS);
+        }
+
+        if (doodleEnabled) {
+            nm.notify(NOTIFICATION_ID_DOODLE, buildDoodleNotification());
+        } else {
+            nm.cancel(NOTIFICATION_ID_DOODLE);
+        }
     }
 
     public static void updateNotification(Context context) {
@@ -494,9 +515,50 @@ public class HeartbeatService extends Service {
     }
 
     /**
+     * Builds the dedicated second persistent Lock-Screen Doodle Card (Notification ID 1002).
+     */
+    private Notification buildDoodleNotification() {
+        Intent doodleIntent = new Intent(this, LockScreenDoodleActivity.class);
+        doodleIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent doodlePending = PendingIntent.getActivity(this, 104, doodleIntent, flags);
+
+        RemoteViews doodleViews = new RemoteViews(getPackageName(), R.layout.notification_doodle_card);
+        doodleViews.setTextViewText(R.id.doodle_notif_title, "Aanya & Me — Live Doodle");
+        doodleViews.setTextViewText(R.id.doodle_notif_subtitle, "Shared two-way canvas with your partner");
+        doodleViews.setOnClickPendingIntent(R.id.btn_doodle_card_draw, doodlePending);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, LOCK_CONTROLS_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Aanya & Me — Live Doodle")
+                .setContentText("Tap to draw live on lock screen")
+                .setCustomContentView(doodleViews)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setShowWhen(false)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(doodlePending);
+
+        return builder.build();
+    }
+
+    /**
      * Displays an audible/vibrating heads-up notification for incoming messages from partner.
      */
     private void showIncomingSystemNotification(String title, String body, String eventId) {
+        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+        boolean messagesEnabled = prefs.getBoolean("lock_messages_enabled", true);
+        if (!messagesEnabled && !isAppInForeground) {
+            // User disabled incoming lock-screen message notifications
+            return;
+        }
+
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
 
