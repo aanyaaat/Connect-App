@@ -194,13 +194,107 @@ function NotificationsSection() {
         </div>
       </div>
 
-      {/* 🔘 Triple Power Button Quick Message Configuration */}
+      {/* 🔒 1-Tap Android Lock-Screen & Permissions Setup Hub */}
+      <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base">⚙️</span>
+          <div>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">Android Lock-Screen &amp; Permissions Setup</p>
+            <p className="text-[11px] text-muted">Tap below to easily enable lock-screen visibility &amp; draw-over permissions</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {/* 1. Lock-screen notification settings */}
+          <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-fg">1. Lock-Screen Notification Card</span>
+              <span className="text-[10px] text-accent font-semibold">ESSENTIAL</span>
+            </div>
+            <p className="text-[11px] text-muted">Ensure "Show on lock screen" &amp; "Show full content" are allowed so the quick action buttons stay pinned.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  if (typeof (window as any).AndroidNativeConfig?.openNotificationSettings === 'function') {
+                    (window as any).AndroidNativeConfig.openNotificationSettings();
+                  } else {
+                    alert('Open your phone Settings -> Notifications -> Aanya & Me -> Enable "Lock screen notifications"');
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="w-full text-xs mt-1"
+            >
+              <span>🔔 Open Lock-Screen Notification Settings</span>
+            </Button>
+          </div>
+
+          {/* 2. Display Over Other Apps (Overlay for Lock-Screen Doodle) */}
+          <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-fg">2. Draw Over Lock Screen (Live Doodle)</span>
+              <span className="text-[10px] text-accent font-semibold">DOODLE</span>
+            </div>
+            <p className="text-[11px] text-muted">Allows the live drawing canvas to open over your lock screen without asking for a passcode or PIN.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  if (typeof (window as any).AndroidNativeConfig?.openOverlaySettings === 'function') {
+                    (window as any).AndroidNativeConfig.openOverlaySettings();
+                  } else {
+                    alert('Open phone Settings -> Apps -> Special app access -> Display over other apps -> Enable Aanya & Me');
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="w-full text-xs mt-1"
+            >
+              <span>🎨 Enable "Display Over Other Apps" (Appear On Top)</span>
+            </Button>
+          </div>
+
+          {/* 3. Unrestricted Battery Delivery */}
+          <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-fg">3. Unrestricted 24/7 Battery</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">REALTIME</span>
+            </div>
+            <p className="text-[11px] text-muted">Exempt from Android sleep so messages and lock-screen buttons are active 24/7.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  if (typeof (window as any).AndroidNativeConfig?.requestBatteryOptimizationExemption === 'function') {
+                    (window as any).AndroidNativeConfig.requestBatteryOptimizationExemption();
+                  } else {
+                    alert('Allow "Unrestricted" battery in Settings -> Apps -> Aanya & Me -> Battery.');
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="w-full text-xs mt-1 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+            >
+              <span>🚀 Allow Unrestricted Battery Delivery</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 🔘 4-Press Power Button Quick Message Configuration */}
       <div className="card p-3.5 bg-bg-elev border border-accent/30 flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
           <span className="text-base">🔘</span>
           <div>
-            <p className="text-xs font-bold text-fg uppercase tracking-wider">Triple Power Button Shortcut</p>
-            <p className="text-[11px] text-muted">Press phone's power button 3x to dispatch this message instantly</p>
+            <p className="text-xs font-bold text-fg uppercase tracking-wider">4-Press Power Button Shortcut</p>
+            <p className="text-[11px] text-muted">Press phone's power button 4x quickly to dispatch this message instantly</p>
           </div>
         </div>
 
@@ -239,44 +333,6 @@ function NotificationsSection() {
             );
           })}
         </div>
-      </div>
-
-      {/* ⚡ Unrestricted Battery Delivery (Instagram/WhatsApp style 0ms lockscreen) */}
-      <div className="card p-3.5 bg-gradient-to-br from-emerald-500/10 via-card to-card border border-emerald-500/30 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base">⚡</span>
-          <div>
-            <p className="text-xs font-bold text-fg uppercase tracking-wider">Instant Lock-Screen Alerts (0ms)</p>
-            <p className="text-[11px] text-muted">Exempt from Android Doze battery sleep so notifications arrive instantly even when phone is locked</p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            try {
-              if (typeof (window as any).AndroidNativeConfig?.requestBatteryOptimizationExemption === 'function') {
-                (window as any).AndroidNativeConfig.requestBatteryOptimizationExemption();
-              } else {
-                alert('Please allow "Unrestricted" battery usage in your phone Settings -> Apps -> Aanya & Me -> Battery.');
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }}
-          className="w-full text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
-        >
-          <span>🚀 Ensure Unrestricted Lock-Screen Delivery</span>
-        </Button>
-      </div>
-
-      <div className="rounded-2xl bg-bg-elev p-3 border border-border/60 text-xs text-muted flex flex-col gap-1.5">
-        <p className="font-semibold text-fg-soft flex items-center gap-1.5">
-          <span>🔒</span> Lock-Screen Quick Actions:
-        </p>
-        <p>• 🏠 <strong>Reached Home</strong>: Send safe arrival update directly from your lock screen without opening the phone.</p>
-        <p>• 🎨 <strong>Doodle Canvas</strong>: Draw live shared love notes right from widget.</p>
-        <p>• 💓 <strong>Live Touch</strong>: Pulse Apple Watch style haptic vibrations directly to partner.</p>
-        <p>• 💖 <strong>Send Love</strong>: Instant poke straight to your partner.</p>
       </div>
     </div>
   );

@@ -89,6 +89,64 @@ public class MainActivity extends BridgeActivity {
                     public void requestBatteryOptimizationExemption() {
                         runOnUiThread(() -> promptBatteryOptimizationExemption());
                     }
+
+                    @JavascriptInterface
+                    public void openNotificationSettings() {
+                        runOnUiThread(() -> {
+                            try {
+                                Intent intent = new Intent();
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                                    intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                                } else {
+                                    intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                    intent.setData(Uri.parse("package:" + getPackageName()));
+                                }
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
+
+                    @JavascriptInterface
+                    public void openOverlaySettings() {
+                        runOnUiThread(() -> {
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:" + getPackageName()));
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    startActivity(intent);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
+
+                    @JavascriptInterface
+                    public void openAppDetailsSettings() {
+                        runOnUiThread(() -> {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                intent.setData(Uri.parse("package:" + getPackageName()));
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
+
+                    @JavascriptInterface
+                    public boolean isOverlayPermissionGranted() {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            return Settings.canDrawOverlays(MainActivity.this);
+                        }
+                        return true;
+                    }
                 }, "AndroidNativeConfig");
             }
         } catch (Exception e) {

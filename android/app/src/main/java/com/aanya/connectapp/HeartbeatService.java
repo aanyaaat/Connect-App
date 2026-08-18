@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 public class HeartbeatService extends Service {
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
-    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_controls_v2";
+    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_controls_v3";
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
     private static final String SUPABASE_WS_URL = "wss://sipvivbfdjewxntlbpzt.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY&vsn=1.0.0";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
@@ -407,7 +407,7 @@ public class HeartbeatService extends Service {
                 NotificationChannel statusChannel = new NotificationChannel(
                         FOREGROUND_CHANNEL_ID,
                         "Lock Screen Quick Controls",
-                        NotificationManager.IMPORTANCE_LOW
+                        NotificationManager.IMPORTANCE_DEFAULT
                 );
                 statusChannel.setDescription("Allows sending quick messages & doodling straight from lock screen without unlocking");
                 statusChannel.setShowBadge(false);
@@ -451,8 +451,12 @@ public class HeartbeatService extends Service {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected to " + partnerName + " ❤️")
                 .setContentText("Tap below to send quick love without unlocking")
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText("Tap below to send quick love or open live shared doodle canvas directly from your lock screen!"))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .setShowWhen(false)
                 .setOngoing(true)
                 .setContentIntent(pi)
                 .addAction(android.R.drawable.ic_menu_send, quick1Label, quick1Pending)
@@ -489,11 +493,11 @@ public class HeartbeatService extends Service {
         long now = System.currentTimeMillis();
         powerPressTimestamps.add(now);
 
-        while (!powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(0) > 2500)) {
+        while (!powerPressTimestamps.isEmpty() && (now - powerPressTimestamps.get(0) > 3500)) {
             powerPressTimestamps.remove(0);
         }
 
-        if (powerPressTimestamps.size() >= 3) {
+        if (powerPressTimestamps.size() >= 4) {
             powerPressTimestamps.clear();
             triggerTriplePowerQuickMessage();
         }
