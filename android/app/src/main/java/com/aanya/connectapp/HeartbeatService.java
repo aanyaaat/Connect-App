@@ -72,13 +72,7 @@ public class HeartbeatService extends Service {
 
         createNotificationChannels();
 
-        // 2. Start permanent Lock Screen Overlay Service (Floating Glass Card over lockscreen)
-        try {
-            Intent overlayIntent = new Intent(this, LockScreenOverlayService.class);
-            startService(overlayIntent);
-        } catch (Exception ignored) {}
-
-        // 3. Start foreground notification for 24/7 keep-alive
+        // 2. Start foreground notification for 24/7 keep-alive with native lockscreen music controls card
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -450,6 +444,8 @@ public class HeartbeatService extends Service {
         }
     }
 
+    private android.support.v4.media.session.MediaSessionCompat mediaSession;
+
     private Notification buildForegroundNotification() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -481,17 +477,30 @@ public class HeartbeatService extends Service {
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
 
-        // Built on ALERT_CHANNEL_ID (the exact high-priority channel verified to show on lock screen)
+        // Native Lock Screen Media Controls (Embedded directly into OS lock screen music player)
+        if (mediaSession == null) {
+            try {
+                mediaSession = new android.support.v4.media.session.MediaSessionCompat(this, "AanyaLockMediaSession");
+                mediaSession.setActive(true);
+            } catch (Exception ignored) {}
+        }
+
+        androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle();
+        if (cardEnabled) {
+            mediaStyle.setShowActionsInCompactView(0, 1, 2);
+        }
+        if (mediaSession != null) {
+            mediaStyle.setMediaSession(mediaSession.getSessionToken());
+        }
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Connected to " + partnerName + " ❤️")
-                .setContentText("Tap below to send quick love or doodle without unlocking")
-                .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText("Tap ❤️ Love or ✨ Miss You to send love instantly without unlocking, or tap 🎨 Doodle to draw live!"))
+                .setContentTitle("Connected with " + partnerName + " ❤️")
+                .setContentText("Aanya & Me • Lock Screen Controls")
+                .setStyle(mediaStyle)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setFullScreenIntent(pi, true)
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
                 .setShowWhen(false)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -528,21 +537,7 @@ public class HeartbeatService extends Service {
         public void onReceive(Context context, Intent intent) {
             if (intent == null || intent.getAction() == null) return;
             String action = intent.getAction();
-            if (Intent.ACTION_SCREEN_ON.equals(action)) {
-                handlePowerPress();
-                try {
-                    KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-                    if (km != null && km.isKeyguardLocked()) {
-                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-                        boolean enabled = prefs.getBoolean("lockscreen_card_enabled", true);
-                        if (enabled) {
-                            Intent cardIntent = new Intent(context, LockScreenCardActivity.class);
-                            cardIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                            context.startActivity(cardIntent);
-                        }
-                    }
-                } catch (Exception ignored) {}
-            } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+            if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
                 handlePowerPress();
             } else if ("android.media.VOLUME_CHANGED_ACTION".equals(action)) {
                 handleVolumePress();
