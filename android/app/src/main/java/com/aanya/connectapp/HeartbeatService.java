@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 public class HeartbeatService extends Service {
     public static final String ALERT_CHANNEL_ID = "aanya_love_channel";
-    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_controls_v3";
+    public static final String FOREGROUND_CHANNEL_ID = "aanya_lock_controls_v4";
     private static final String SUPABASE_URL = "https://sipvivbfdjewxntlbpzt.supabase.co";
     private static final String SUPABASE_WS_URL = "wss://sipvivbfdjewxntlbpzt.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY&vsn=1.0.0";
     private static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpcHZpdmJmZGpld3hudGxicHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjcwNjIsImV4cCI6MjEwMjU0MzA2Mn0.Lns7Z9NV27UV13vhM5mGthwhSfLJh0jQzCzjb8dwoUY";
@@ -73,7 +74,11 @@ public class HeartbeatService extends Service {
         // 2. Start foreground notification for 24/7 keep-alive
         try {
             Notification fgNotif = buildForegroundNotification();
-            startForeground(1001, fgNotif);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(1001, fgNotif);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -91,6 +96,16 @@ public class HeartbeatService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && "ACTION_UPDATE_NOTIFICATION".equals(intent.getAction())) {
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    nm.notify(1001, buildForegroundNotification());
+                }
+            } catch (Exception ignored) {}
+            return START_STICKY;
+        }
+
         if (!isRunning) {
             isRunning = true;
             // Connect to Realtime WebSocket stream
@@ -101,6 +116,14 @@ public class HeartbeatService extends Service {
             startFallbackDaemon();
         }
         return START_STICKY;
+    }
+
+    public static void updateNotification(Context context) {
+        try {
+            Intent intent = new Intent(context, HeartbeatService.class);
+            intent.setAction("ACTION_UPDATE_NOTIFICATION");
+            context.startService(intent);
+        } catch (Exception ignored) {}
     }
 
     // =========================================================================

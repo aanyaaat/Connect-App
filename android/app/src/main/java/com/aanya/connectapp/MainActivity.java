@@ -50,6 +50,7 @@ public class MainActivity extends BridgeActivity {
                                 .putString("connection_id", connectionId)
                                 .putString("partner_name", partnerName)
                                 .apply();
+                        HeartbeatService.updateNotification(MainActivity.this);
                     }
 
                     @JavascriptInterface
@@ -72,6 +73,7 @@ public class MainActivity extends BridgeActivity {
                                 .putString("quick_2_emoji", q2Emoji)
                                 .putString("quick_2_label", q2Label)
                                 .apply();
+                        HeartbeatService.updateNotification(MainActivity.this);
                     }
 
                     @JavascriptInterface
