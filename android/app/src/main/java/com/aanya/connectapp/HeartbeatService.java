@@ -121,11 +121,6 @@ public class HeartbeatService extends Service {
         }
         return START_STICKY;
     }
-            startHeartbeatPing();
-            startFallbackDaemon();
-        }
-        return START_STICKY;
-    }
 
     public static void updateNotification(Context context) {
         try {
