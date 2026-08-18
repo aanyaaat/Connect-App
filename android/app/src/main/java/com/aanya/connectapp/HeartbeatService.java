@@ -72,11 +72,11 @@ public class HeartbeatService extends Service {
 
         createNotificationChannels();
 
-        // 2. Start foreground notification for 24/7 keep-alive with native lockscreen music controls card
+        // 2. Start foreground notification for 24/7 keep-alive with permanent lockscreen quick controls card
         try {
             Notification fgNotif = buildForegroundNotification();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                startForeground(1001, fgNotif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
             } else {
                 startForeground(1001, fgNotif);
             }
@@ -444,8 +444,6 @@ public class HeartbeatService extends Service {
         }
     }
 
-    private android.support.v4.media.session.MediaSessionCompat mediaSession;
-
     private Notification buildForegroundNotification() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -477,51 +475,16 @@ public class HeartbeatService extends Service {
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
 
-        // Native Lock Screen Media Controls (Embedded directly into OS lock screen music player)
-        if (mediaSession == null) {
-            try {
-                mediaSession = new android.support.v4.media.session.MediaSessionCompat(this, "AanyaLockMediaSession");
-                mediaSession.setActive(true);
-            } catch (Exception ignored) {}
-        }
-
-        if (mediaSession != null) {
-            try {
-                android.support.v4.media.session.PlaybackStateCompat state = new android.support.v4.media.session.PlaybackStateCompat.Builder()
-                        .setActions(android.support.v4.media.session.PlaybackStateCompat.ACTION_PLAY
-                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_PAUSE
-                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                | android.support.v4.media.session.PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-                        .setState(android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
-                        .build();
-                mediaSession.setPlaybackState(state);
-
-                android.support.v4.media.MediaMetadataCompat metadata = new android.support.v4.media.MediaMetadataCompat.Builder()
-                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_TITLE, "Connected with " + partnerName + " ❤️")
-                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ARTIST, "Aanya & Me • Lock Screen Controls")
-                        .putString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM, "Tap below to send love or live doodle")
-                        .putBitmap(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART, android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
-                        .build();
-                mediaSession.setMetadata(metadata);
-            } catch (Exception ignored) {}
-        }
-
-        androidx.media.app.NotificationCompat.MediaStyle mediaStyle = new androidx.media.app.NotificationCompat.MediaStyle();
-        if (cardEnabled) {
-            mediaStyle.setShowActionsInCompactView(0, 1, 2);
-        }
-        if (mediaSession != null) {
-            mediaStyle.setMediaSession(mediaSession.getSessionToken());
-        }
-
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected with " + partnerName + " ❤️")
-                .setContentText("Aanya & Me • Lock Screen Controls")
-                .setStyle(mediaStyle)
+                .setContentText("Tap below to send quick love or doodle without unlocking")
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText("Tap ❤️ Love or ✨ Miss You to send love instantly without unlocking, or tap 🎨 Doodle to draw live!"))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setFullScreenIntent(pi, true)
                 .setShowWhen(false)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
