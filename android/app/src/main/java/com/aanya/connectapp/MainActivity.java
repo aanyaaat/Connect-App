@@ -136,6 +136,21 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
+                    public void openXiaomiLockScreenPermission() {
+                        runOnUiThread(() -> {
+                            try {
+                                Intent intent = new Intent("miui.intent.action.APP_PERM_EDITOR");
+                                intent.setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity");
+                                intent.putExtra("extra_pkgname", getPackageName());
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                openNotificationSettings();
+                            }
+                        });
+                    }
+
+                    @JavascriptInterface
                     public void openAppDetailsSettings() {
                         runOnUiThread(() -> {
                             try {

@@ -87,6 +87,17 @@
             android:theme="@android:style/Theme.NoTitleBar"
             android:launchMode="singleTask" />
 
+        <!-- Universal Lock Screen Foreground Card Activity (Guaranteed Over All Themes & Glance) -->
+        <activity
+            android:name=".LockScreenCardActivity"
+            android:label="Aanya &amp; Me Quick Actions"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleInstance" />
+
         <!-- Permanent Lock Screen Card Overlay Service -->
         <service
             android:name=".LockScreenOverlayService"

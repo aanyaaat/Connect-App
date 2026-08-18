@@ -525,7 +525,21 @@ public class HeartbeatService extends Service {
         public void onReceive(Context context, Intent intent) {
             if (intent == null || intent.getAction() == null) return;
             String action = intent.getAction();
-            if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action)) {
+            if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                handlePowerPress();
+                try {
+                    KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                    if (km != null && km.isKeyguardLocked()) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        boolean enabled = prefs.getBoolean("lockscreen_card_enabled", true);
+                        if (enabled) {
+                            Intent cardIntent = new Intent(context, LockScreenCardActivity.class);
+                            cardIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                            context.startActivity(cardIntent);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                 handlePowerPress();
             } else if ("android.media.VOLUME_CHANGED_ACTION".equals(action)) {
                 handleVolumePress();

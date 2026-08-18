@@ -326,10 +326,37 @@ function NotificationsSection() {
             </Button>
           </div>
 
-          {/* 3. Unrestricted Battery Delivery */}
+          {/* 3. Xiaomi / HyperOS / Custom Themes Lock Screen Permissions */}
           <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-fg">3. Unrestricted 24/7 Battery</span>
+              <span className="text-xs font-bold text-fg">3. Xiaomi / HyperOS "Show on Lock screen"</span>
+              <span className="text-[10px] text-amber-400 font-semibold">MIUI / HYPEROS</span>
+            </div>
+            <p className="text-[11px] text-muted">On Xiaomi / Redmi / POCO, toggle "Show on Lock screen" so cards bypass custom lock skins.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  if (typeof (window as any).AndroidNativeConfig?.openXiaomiLockScreenPermission === 'function') {
+                    (window as any).AndroidNativeConfig.openXiaomiLockScreenPermission();
+                  } else {
+                    alert('Open phone Settings -> Apps -> Manage apps -> Aanya & Me -> Other permissions -> Enable "Show on Lock screen"');
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="w-full text-xs mt-1 border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+            >
+              <span>⚡ Open Xiaomi / POCO Lock Screen Permissions</span>
+            </Button>
+          </div>
+
+          {/* 4. Unrestricted Battery Delivery */}
+          <div className="rounded-xl bg-card p-2.5 border border-border/60 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-fg">4. Unrestricted 24/7 Battery</span>
               <span className="text-[10px] text-emerald-400 font-semibold">REALTIME</span>
             </div>
             <p className="text-[11px] text-muted">Exempt from Android sleep so messages and lock-screen buttons are active 24/7.</p>
