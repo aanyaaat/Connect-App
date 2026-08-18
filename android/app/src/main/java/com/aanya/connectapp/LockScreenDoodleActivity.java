@@ -2,8 +2,8 @@ package com.aanya.connectapp;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -14,6 +14,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import java.net.URLEncoder;
 
 public class LockScreenDoodleActivity extends Activity {
     private WebView webView;
@@ -23,16 +24,10 @@ public class LockScreenDoodleActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Allow drawing and interacting directly above lock screen without PIN/passcode
+        // Allow drawing and interacting directly ABOVE lock screen without entering password or PIN
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
-            try {
-                KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-                if (km != null) {
-                    km.requestDismissKeyguard(this, null);
-                }
-            } catch (Exception ignored) {}
         }
         
         Window window = getWindow();
@@ -40,7 +35,6 @@ public class LockScreenDoodleActivity extends Activity {
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
                 | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
             );
@@ -87,8 +81,21 @@ public class LockScreenDoodleActivity extends Activity {
 
         setContentView(root);
 
-        // Load live web doodle canvas with local fallback
-        webView.loadUrl("https://aanya-and-me.pages.dev/?screen=doodle");
+        // Load live web doodle canvas with authenticated context
+        try {
+            SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+            String userId = prefs.getString("user_id", "");
+            String connId = prefs.getString("connection_id", "");
+            String partnerName = prefs.getString("partner_name", "Aanya");
+
+            String url = "https://aanya-and-me.pages.dev/?screen=doodle"
+                    + "&user_id=" + URLEncoder.encode(userId, "UTF-8")
+                    + "&connection_id=" + URLEncoder.encode(connId, "UTF-8")
+                    + "&partner_name=" + URLEncoder.encode(partnerName, "UTF-8");
+            webView.loadUrl(url);
+        } catch (Exception e) {
+            webView.loadUrl("https://aanya-and-me.pages.dev/?screen=doodle");
+        }
     }
 
     @Override

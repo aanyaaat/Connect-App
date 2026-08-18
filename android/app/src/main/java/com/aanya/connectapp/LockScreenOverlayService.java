@@ -114,14 +114,15 @@ public class LockScreenOverlayService extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
             );
 
-            params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-            params.y = 80; // Above bottom navigation bar / fingerprint scanner
+            params.gravity = Gravity.CENTER_HORIZONTAL | Gravity.TOP;
+            params.y = 220; // Positioned right below the lockscreen clock, above Glance and bottom fingerprint area
 
             // Build luxury floating glassmorphism card
             LinearLayout card = new LinearLayout(this);

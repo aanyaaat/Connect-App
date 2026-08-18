@@ -8,6 +8,7 @@ import { Home } from '@/screens/Home';
 import { Places } from '@/screens/Places';
 import { History } from '@/screens/History';
 import { Settings } from '@/screens/Settings';
+import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Heart, Clock, MapPin, Settings2 } from 'lucide-react';
 import { App as CapApp } from '@capacitor/app';
 
@@ -20,6 +21,41 @@ function Router() {
   const [onboarded, setOnboarded] = useState(() => 
     Boolean(localStorage.getItem('aanya_onboarded') === '1' || localStorage.getItem('aanya_saved_display_name') || localStorage.getItem('aanya_cached_user'))
   );
+
+  // Lock Screen Direct Doodle Canvas Handler
+  const isDoodleScreen = typeof window !== 'undefined' && (
+    new URLSearchParams(window.location.search).get('screen') === 'doodle'
+  );
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const qUser = params.get('user_id');
+      const qPartner = params.get('partner_name');
+      if (qUser) {
+        localStorage.setItem('aanya_saved_display_name', qUser);
+        localStorage.setItem('aanya_onboarded', '1');
+      }
+      if (qPartner) {
+        localStorage.setItem('aanya_partner_name', qPartner);
+      }
+    }
+  }, []);
+
+  if (isDoodleScreen) {
+    return (
+      <div className="fixed inset-0 bg-[#170610] z-50 flex flex-col items-center justify-center">
+        <DoodleCanvas
+          isOpen={true}
+          onClose={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              window.history.back();
+            }
+          }}
+        />
+      </div>
+    );
+  }
 
   // Universal Back Navigation (Hardware back button, Browser history, and Escape key)
   useEffect(() => {
