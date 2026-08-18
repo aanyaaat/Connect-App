@@ -34,9 +34,10 @@ public class BootReceiver extends BroadcastReceiver {
             if (canAccessStorage) {
                 try {
                     SharedPreferences prefs = context.getSharedPreferences("aanya_prefs", Context.MODE_PRIVATE);
-                    boolean isEnabled = prefs.getBoolean("lockscreen_card_enabled", true);
-                    if (!isEnabled) {
-                        return; // User explicitly disabled lock-screen controls
+                    boolean controlsEnabled = prefs.getBoolean("lock_controls_enabled", true);
+                    boolean doodleEnabled = prefs.getBoolean("lock_doodle_enabled", true);
+                    if (!controlsEnabled && !doodleEnabled) {
+                        return; // User explicitly disabled all lock-screen cards
                     }
                 } catch (Exception ignored) {}
             }

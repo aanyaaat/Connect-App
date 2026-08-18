@@ -502,6 +502,7 @@ public class HeartbeatService extends Service {
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setShowWhen(false)
                 .setOngoing(true)
+                .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pi);
 
@@ -542,6 +543,7 @@ public class HeartbeatService extends Service {
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setShowWhen(false)
                 .setOngoing(true)
+                .setAutoCancel(false)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(doodlePending);
 
