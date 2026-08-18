@@ -118,36 +118,65 @@ function SettingsModal({ section, onClose }: { section: Section; onClose: () => 
 
 function NotificationsSection() {
   const [granted, setGranted] = useState<boolean>(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') return true;
-    return localStorage.getItem('aanya_notif_granted') === '1';
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.permission === 'granted') {
+        return true;
+      }
+      return typeof localStorage !== 'undefined' && localStorage.getItem('aanya_notif_granted') === '1';
+    } catch {
+      return false;
+    }
   });
   const [testSent, setTestSent] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string>('');
 
   useEffect(() => {
-    notifPermission().then((p) => {
-      if (p === 'granted') {
-        setGranted(true);
-        localStorage.setItem('aanya_notif_granted', '1');
-      }
-    });
+    // 1. Check existing permission status
+    try {
+      notifPermission().then((p) => {
+        if (p === 'granted') {
+          setGranted(true);
+          try { localStorage.setItem('aanya_notif_granted', '1'); } catch {}
+        } else {
+          // 2. Instagram-style Auto Prompt: If not granted, auto-request permission immediately
+          requestNotifPermission().then((res) => {
+            if (res === 'granted') {
+              setGranted(true);
+              try { localStorage.setItem('aanya_notif_granted', '1'); } catch {}
+            }
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    } catch {}
   }, []);
 
   async function handleRequest() {
-    const res = await requestNotifPermission();
-    if (res === 'granted') {
-      setGranted(true);
-      localStorage.setItem('aanya_notif_granted', '1');
+    try {
+      const res = await requestNotifPermission();
+      if (res === 'granted') {
+        setGranted(true);
+        try { localStorage.setItem('aanya_notif_granted', '1'); } catch {}
+        setStatusMsg('Notifications successfully enabled! 🎉');
+      } else {
+        setStatusMsg('Please allow notifications in your device settings.');
+      }
+    } catch (e) {
+      console.warn(e);
     }
   }
 
   async function handleTest() {
-    await showLocalNotification({
-      title: '💖 Aanya & Me Test Alert',
-      body: 'Instant notification received successfully!',
-      isActionable: true,
-    });
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 2500);
+    try {
+      await showLocalNotification({
+        title: '💖 Aanya & Me Test Alert',
+        body: 'Instant notification received successfully!',
+        isActionable: true,
+      });
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 2500);
+    } catch (e) {
+      console.warn(e);
+    }
   }
 
   return (
@@ -157,16 +186,22 @@ function NotificationsSection() {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-white">
             <Bell className="h-5 w-5" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-fg">Push &amp; Lock-Screen Alerts</p>
             <p className="text-xs text-muted">
               {granted
                 ? 'System notifications are ACTIVE and enabled! 🎉'
-                : 'Allow notifications to receive pokes & lock-screen controls'}
+                : 'Allow notifications to receive instant love & lock-screen controls'}
             </p>
           </div>
         </div>
       </div>
+
+      {statusMsg && (
+        <p className="text-xs font-semibold text-accent text-center bg-accent-soft/40 p-2 rounded-xl">
+          {statusMsg}
+        </p>
+      )}
 
       {!granted && (
         <Button onClick={handleRequest} className="w-full">

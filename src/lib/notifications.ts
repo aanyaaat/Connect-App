@@ -68,7 +68,7 @@ export async function initializeNotificationSystem(
       try {
         const reg = await navigator.serviceWorker.ready;
         let sub = await reg.pushManager.getSubscription();
-        if (!sub && Notification.permission === 'granted') {
+        if (!sub && typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
           sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
