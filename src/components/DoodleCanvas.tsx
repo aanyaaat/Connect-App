@@ -11,12 +11,12 @@ interface DoodleCanvasProps {
 
 const COLORS = [
   '#f43f5e', // Rose Red
+  '#3b82f6', // Electric Blue
+  '#10b981', // Emerald Green
+  '#8b5cf6', // Purple
+  '#f59e0b', // Amber
+  '#000000', // Jet Black
   '#ec4899', // Pink
-  '#a855f7', // Neon Violet
-  '#38bdf8', // Electric Sky
-  '#f59e0b', // Amber Sunset
-  '#10b981', // Emerald
-  '#ffffff', // Pure White
 ];
 
 export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
@@ -27,6 +27,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
   const [lineWidth, setLineWidth] = useState(4);
   const [isDrawing, setIsDrawing] = useState(false);
   const [partnerDrawing, setPartnerDrawing] = useState(false);
+  const [canvasBg, setCanvasBg] = useState<'white' | 'dark'>('white');
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const channelRef = useRef<any>(null);
 
@@ -67,7 +68,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
     };
   }, [connection, user]);
 
-  // Adjust canvas resolution for high DPI displays
+  // Adjust canvas resolution for high DPI displays and initialize with white background
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -80,10 +81,10 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
       ctx.scale(dpr, dpr);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.fillStyle = '#0f0a17';
+      ctx.fillStyle = canvasBg === 'white' ? '#ffffff' : '#0f0a17';
       ctx.fillRect(0, 0, rect.width, rect.height);
     }
-  }, [isOpen]);
+  }, [isOpen, canvasBg]);
 
   const drawRemoteStroke = (stroke: {
     fromX: number;
@@ -113,7 +114,7 @@ export function DoodleCanvas({ isOpen, onClose }: DoodleCanvasProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    ctx.fillStyle = '#0f0a17';
+    ctx.fillStyle = canvasBg === 'white' ? '#ffffff' : '#0f0a17';
     ctx.fillRect(0, 0, rect.width, rect.height);
   };
 
