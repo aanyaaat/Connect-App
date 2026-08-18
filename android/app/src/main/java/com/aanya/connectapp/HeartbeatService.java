@@ -406,11 +406,12 @@ public class HeartbeatService extends Service {
 
                 NotificationChannel statusChannel = new NotificationChannel(
                         FOREGROUND_CHANNEL_ID,
-                        "Connection Keep-Alive Service",
-                        NotificationManager.IMPORTANCE_MIN
+                        "Lock Screen Quick Controls",
+                        NotificationManager.IMPORTANCE_LOW
                 );
-                statusChannel.setDescription("Keeps connection alive 24/7 in background");
+                statusChannel.setDescription("Allows sending quick messages & doodling straight from lock screen without unlocking");
                 statusChannel.setShowBadge(false);
+                statusChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 nm.createNotificationChannel(statusChannel);
             }
         }
@@ -428,14 +429,35 @@ public class HeartbeatService extends Service {
         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
         String partnerName = prefs.getString("partner_name", "Aanya");
 
+        // Action 1: ❤️ Send Love
+        Intent quick1Intent = new Intent(this, QuickActionReceiver.class);
+        quick1Intent.setAction(QuickActionReceiver.ACTION_QUICK_1);
+        PendingIntent quick1Pending = PendingIntent.getBroadcast(this, 101, quick1Intent, flags);
+
+        // Action 2: ✨ Miss You
+        Intent quick2Intent = new Intent(this, QuickActionReceiver.class);
+        quick2Intent.setAction(QuickActionReceiver.ACTION_QUICK_2);
+        PendingIntent quick2Pending = PendingIntent.getBroadcast(this, 102, quick2Intent, flags);
+
+        // Action 3: 🎨 Live Doodle Screen (Opens directly above lockscreen!)
+        Intent doodleIntent = new Intent(this, LockScreenDoodleActivity.class);
+        doodleIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent doodlePending = PendingIntent.getActivity(this, 103, doodleIntent, flags);
+
+        String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
+        String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
+
         return new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected to " + partnerName + " ❤️")
-                .setContentText("Listening for live moments & messages 24/7")
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setContentText("Tap below to send quick love without unlocking")
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOngoing(true)
                 .setContentIntent(pi)
+                .addAction(android.R.drawable.ic_menu_send, quick1Label, quick1Pending)
+                .addAction(android.R.drawable.ic_menu_send, quick2Label, quick2Pending)
+                .addAction(android.R.drawable.ic_menu_edit, "🎨 Doodle", doodlePending)
                 .build();
     }
 

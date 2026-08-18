@@ -64,6 +64,28 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/connect_widget_info" />
         </receiver>
+
+        <!-- Lock Screen Quick Action Receiver (Direct Sending without unlocking phone) -->
+        <receiver
+            android:name=".QuickActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aanya.connectapp.ACTION_QUICK_1" />
+                <action android:name="com.aanya.connectapp.ACTION_QUICK_2" />
+                <action android:name="com.aanya.connectapp.ACTION_QUICK_3" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Lock Screen Realtime Doodle Canvas (Shows directly above lock screen) -->
+        <activity
+            android:name=".LockScreenDoodleActivity"
+            android:label="Aanya &amp; Me Doodle"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoTitleBar"
+            android:launchMode="singleTask" />
     </application>
 
     <!-- Permissions -->

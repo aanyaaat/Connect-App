@@ -72,6 +72,13 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
     return [...pinned, ...DEFAULT_QUICK_ACTIONS, ...rest];
   }, [quickMessages]);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('screen') === 'doodle' || window.location.hash === '#doodle') {
+      setShowDoodleModal(true);
+    }
+  }, []);
+
   function triggerHeartEffect() {
     setHeartPulsing(true);
     setTimeout(() => setHeartPulsing(false), 300);

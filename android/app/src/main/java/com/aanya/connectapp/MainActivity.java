@@ -62,6 +62,19 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     @JavascriptInterface
+                    public void saveQuickActions(String q1Text, String q1Emoji, String q1Label, String q2Text, String q2Emoji, String q2Label) {
+                        SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
+                        prefs.edit()
+                                .putString("quick_1_text", q1Text)
+                                .putString("quick_1_emoji", q1Emoji)
+                                .putString("quick_1_label", q1Label)
+                                .putString("quick_2_text", q2Text)
+                                .putString("quick_2_emoji", q2Emoji)
+                                .putString("quick_2_label", q2Label)
+                                .apply();
+                    }
+
+                    @JavascriptInterface
                     public boolean isBatteryOptimizationIgnored() {
                         try {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

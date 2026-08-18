@@ -152,18 +152,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     loadConnection();
   }, [user, loadConnection]);
 
-  // Sync config to Android Native 24/7 Background Heartbeat Service
+  // Sync config & lock-screen quick actions to Android Native 24/7 Background Heartbeat Service
   useEffect(() => {
     if (user?.id && connection?.id) {
       try {
         if (typeof (window as any).AndroidNativeConfig?.saveConfig === 'function') {
           (window as any).AndroidNativeConfig.saveConfig(user.id, connection.id, partnerName);
         }
+        if (typeof (window as any).AndroidNativeConfig?.saveQuickActions === 'function') {
+          const q1 = quickMessages[0] || { message: 'Thinking of you right now ❤️', emoji: '❤️', label: '❤️ Love' };
+          const q2 = quickMessages[1] || { message: 'Miss you so much ✨', emoji: '✨', label: '✨ Miss You' };
+          (window as any).AndroidNativeConfig.saveQuickActions(
+            q1.message,
+            q1.emoji,
+            q1.label || '❤️ Love',
+            q2.message,
+            q2.emoji,
+            q2.label || '✨ Miss You'
+          );
+        }
       } catch {
         // ignore on web
       }
     }
-  }, [user?.id, connection?.id, partnerName]);
+  }, [user?.id, connection?.id, partnerName, quickMessages]);
 
   // Pure WebSockets: Realtime bidirectional channel for instant sub-50ms connection updates
   useEffect(() => {
