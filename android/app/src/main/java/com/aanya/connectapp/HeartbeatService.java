@@ -17,6 +17,7 @@ import android.os.PowerManager;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.widget.RemoteViews;
 import androidx.core.app.NotificationCompat;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -442,12 +443,39 @@ public class HeartbeatService extends Service {
         String quick1Label = prefs.getString("quick_1_label", "❤️ Love");
         String quick2Label = prefs.getString("quick_2_label", "✨ Miss You");
 
+        // 1. Collapsed / Compact RemoteViews (Exposes all 3 buttons without expanding)
+        RemoteViews compactViews = new RemoteViews(getPackageName(), R.layout.notification_lock_compact);
+        compactViews.setTextViewText(R.id.notif_title, "Aanya & Me");
+        compactViews.setTextViewText(R.id.notif_subtitle, "Connected with " + partnerName + " ❤️");
+        compactViews.setTextViewText(R.id.notif_status, "Connected ❤️");
+        compactViews.setTextViewText(R.id.btn_notif_quick_1, quick1Label);
+        compactViews.setTextViewText(R.id.btn_notif_quick_2, quick2Label);
+        compactViews.setTextViewText(R.id.btn_notif_doodle, "🎨 Doodle");
+
+        compactViews.setOnClickPendingIntent(R.id.btn_notif_quick_1, quick1Pending);
+        compactViews.setOnClickPendingIntent(R.id.btn_notif_quick_2, quick2Pending);
+        compactViews.setOnClickPendingIntent(R.id.btn_notif_doodle, doodlePending);
+
+        // 2. Expanded RemoteViews (Spacious layout with rich descriptions)
+        RemoteViews expandedViews = new RemoteViews(getPackageName(), R.layout.notification_lock_expanded);
+        expandedViews.setTextViewText(R.id.notif_title_exp, "Aanya & Me");
+        expandedViews.setTextViewText(R.id.notif_subtitle_exp, "Connected with " + partnerName + " ❤️");
+        expandedViews.setTextViewText(R.id.notif_status_exp, "Connected ❤️");
+        expandedViews.setTextViewText(R.id.btn_notif_quick_1_exp, quick1Label);
+        expandedViews.setTextViewText(R.id.btn_notif_quick_2_exp, quick2Label);
+        expandedViews.setTextViewText(R.id.btn_notif_doodle_exp, "🎨 Doodle");
+
+        expandedViews.setOnClickPendingIntent(R.id.btn_notif_quick_1_exp, quick1Pending);
+        expandedViews.setOnClickPendingIntent(R.id.btn_notif_quick_2_exp, quick2Pending);
+        expandedViews.setOnClickPendingIntent(R.id.btn_notif_doodle_exp, doodlePending);
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, LOCK_CONTROLS_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Connected with " + partnerName + " ❤️")
                 .setContentText("Your moments are ready")
-                .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText("Tap quick actions to send love instantly without unlocking, or tap Doodle to draw live together."))
+                .setCustomContentView(compactViews)
+                .setCustomBigContentView(expandedViews)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
