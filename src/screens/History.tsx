@@ -11,7 +11,7 @@ import { ArrowLeft, Clock, Star, MapPin } from 'lucide-react';
 type Filter = 'all' | 'messages' | 'locations' | 'saved' | 'sos';
 
 export function History({ onBack }: { onBack: () => void }) {
-  const { events, toggleKeepForever, deleteEvent } = useAppData();
+  const { events, partnerName, toggleKeepForever, deleteEvent } = useAppData();
   const { profile } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const [showLocation, setShowLocation] = useState<AppEvent | null>(null);
@@ -39,59 +39,54 @@ export function History({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="app-shell px-5 pt-8 pb-44 flex flex-col gap-4">
-      {/* Header */}
-      <header className="flex items-center gap-3 pt-2">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg shadow-sm active:scale-95 transition"
-          aria-label="Back"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-card border border-border/80 text-fg hover:bg-accent-soft/30 transition shadow-sm"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div>
-          <h1 className="text-2xl text-fg font-serif">Shared Moments</h1>
-          <p className="text-xs text-muted">Your memories and check-in timeline</p>
-        </div>
-      </header>
+        <h1 className="text-lg font-serif font-bold text-fg">Timeline History</h1>
+        <div className="h-10 w-10" />
+      </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-        {([
-          ['all', '✨ All'],
-          ['messages', '💬 Messages'],
-          ['locations', '📍 Locations'],
-          ['saved', '⭐ Saved Forever'],
-          ['sos', '🚨 SOS'],
-        ] as [Filter, string][]).map(([f, label]) => (
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        {(
+          [
+            { key: 'all', label: 'All', icon: Clock },
+            { key: 'saved', label: 'Saved ⭐', icon: Star },
+            { key: 'messages', label: 'Messages', icon: Clock },
+            { key: 'locations', label: 'Places', icon: MapPin },
+            { key: 'sos', label: 'SOS 🚨', icon: null },
+          ] as const
+        ).map((tab) => (
           <button
-            key={f}
-            className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-semibold transition-all ${
-              filter === f
-                ? 'bg-accent text-white shadow-md shadow-accent/20 scale-105'
-                : 'bg-card border border-border/80 text-fg-soft hover:bg-accent-soft/30'
+            key={tab.key}
+            onClick={() => setFilter(tab.key as Filter)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              filter === tab.key
+                ? 'bg-accent text-white shadow-md shadow-accent/25'
+                : 'bg-card border border-border/60 text-muted hover:text-fg'
             }`}
-            onClick={() => setFilter(f)}
           >
-            {label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Moments Grouped by Day */}
+      {/* Grouped Day List */}
       <div className="flex flex-col gap-4">
         {grouped.length === 0 ? (
-          <EmptyState
-            icon={filter === 'saved' ? '⭐' : '💌'}
-            title={filter === 'saved' ? 'No saved memories yet' : 'No moments found'}
-            subtitle={
-              filter === 'saved'
-                ? 'Tap the star (⭐) on any message in your feed to save it permanently!'
-                : 'Your sent messages, arrivals and pokes will be recorded here.'
-            }
-          />
+          <div className="card p-8 text-center text-muted">
+            <span className="text-3xl mb-2 block">📭</span>
+            <p className="text-sm font-semibold">No moments found</p>
+            <p className="text-xs text-muted mt-1">Try switching filter tabs above.</p>
+          </div>
         ) : (
           grouped.map(([day, evs]) => (
-            <div key={day} className="fade-up">
+            <div key={day}>
               <p className="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-muted">
                 {day}
               </p>
@@ -101,6 +96,7 @@ export function History({ onBack }: { onBack: () => void }) {
                     key={e.id}
                     event={e}
                     myId={profile?.id ?? ''}
+                    partnerName={partnerName}
                     onShowLocation={(ev) => setShowLocation(ev)}
                     onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
                     onDelete={(ev) => deleteEvent(ev.id)}

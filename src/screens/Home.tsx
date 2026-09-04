@@ -190,7 +190,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
               </span>
               <h2 className="text-xl font-serif font-bold text-fg">Your Pairing Code</h2>
               <p className="text-xs text-muted mt-1 mb-4">
-                Share this code with Aanya to link your phones:
+                Share this code with your partner to link your phones:
               </p>
 
               {activePairingCode ? (
@@ -224,13 +224,13 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
               </span>
               <h2 className="text-xl font-serif font-bold text-fg">Enter Partner's Code</h2>
               <p className="text-xs text-muted mt-1 mb-5">
-                Have Aanya's code? Enter it below to connect:
+                Have your partner's code? Enter it below to connect:
               </p>
 
               <form onSubmit={handleDirectJoin} className="flex flex-col gap-3">
                 <input
                   className="input uppercase tracking-wider text-center font-serif text-lg font-bold py-3"
-                  placeholder="e.g. AANYA-7282"
+                  placeholder="e.g. LOVE-7282"
                   value={partnerCodeInput}
                   onChange={(e) => setPartnerCodeInput(e.target.value)}
                 />
@@ -622,6 +622,7 @@ export function Home({ onNavigate }: { onNavigate: (s: 'places' | 'history' | 's
                     key={e.id}
                     event={e}
                     myId={profile?.id ?? ''}
+                    partnerName={partnerName}
                     onShowLocation={(ev) => setShowLocationModal(ev)}
                     onToggleKeepForever={(ev) => toggleKeepForever(ev.id)}
                     onDelete={(ev) => deleteEvent(ev.id)}

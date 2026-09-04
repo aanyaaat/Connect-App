@@ -24,7 +24,7 @@ public class ConnectAppWidget extends AppWidgetProvider {
 
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences("aanya_prefs", Context.MODE_PRIVATE);
-        String partnerName = prefs.getString("partner_name", "Aanya");
+        String partnerName = prefs.getString("partner_name", "Partner");
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_connect_layout);
         views.setTextViewText(R.id.widget_partner_name, partnerName + " & Me ❤️");

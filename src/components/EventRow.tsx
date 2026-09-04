@@ -4,6 +4,7 @@ import type { AppEvent } from '@/lib/supabase';
 export function EventRow({
   event,
   myId,
+  partnerName,
   onShowLocation,
   onAck,
   onToggleKeepForever,
@@ -11,6 +12,7 @@ export function EventRow({
 }: {
   event: AppEvent;
   myId: string;
+  partnerName?: string;
   onShowLocation?: (e: AppEvent) => void;
   onAck?: (e: AppEvent) => void;
   onToggleKeepForever?: (e: AppEvent) => void;
@@ -25,7 +27,7 @@ export function EventRow({
       <span className="text-xl leading-none">{event.emoji}</span>
       <div className="flex-1">
         <p className="text-sm font-medium">
-          {mine ? 'You' : 'Aanya'}: <span className="font-normal text-fg-soft">{event.message}</span>
+          {mine ? 'You' : (partnerName || 'Partner')}: <span className="font-normal text-fg-soft">{event.message}</span>
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
           <span>{formatTime(event.occurred_at)}</span>

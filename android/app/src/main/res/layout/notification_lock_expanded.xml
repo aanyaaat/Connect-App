@@ -42,7 +42,7 @@
         android:id="@+id/notif_subtitle_exp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Connected with Aanya — Moments ready"
+        android:text="Connected with Partner — Moments ready"
         android:textSize="12sp"
         android:textColor="#B0FFFFFF"
         android:layout_marginTop="2dp" />

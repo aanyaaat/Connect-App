@@ -81,7 +81,7 @@ public class LockScreenDoodleActivity extends Activity {
             @JavascriptInterface
             public String getPartnerName() {
                 SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-                return prefs.getString("partner_name", "Aanya");
+                return prefs.getString("partner_name", "Partner");
             }
 
             @JavascriptInterface

@@ -249,7 +249,7 @@ public class HeartbeatService extends Service {
         try {
             SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
             String myUserId = prefs.getString("user_id", "");
-            String partnerName = prefs.getString("partner_name", "Aanya");
+            String partnerName = prefs.getString("partner_name", "Partner");
 
             String senderId = record.optString("sender_id");
             String eventId = record.optString("id");
@@ -441,7 +441,7 @@ public class HeartbeatService extends Service {
         PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
 
         SharedPreferences prefs = getSharedPreferences("aanya_prefs", MODE_PRIVATE);
-        String partnerName = prefs.getString("partner_name", "Aanya");
+        String partnerName = prefs.getString("partner_name", "Partner");
         boolean cardEnabled = prefs.getBoolean("lockscreen_card_enabled", true);
 
         // Action 1: Send Quick Message 1

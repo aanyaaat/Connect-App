@@ -33,19 +33,17 @@ function getOrCreateDeviceId(): string {
 
 export function nameToDeterministicUuid(name: string): string {
   const clean = name.toLowerCase().trim().replace(/[\s_\-.]+/g, '');
-  if (clean.startsWith('akh')) {
-    return '00000000-0000-4000-8000-000000000001';
-  }
-  if (clean.startsWith('aany') || clean.startsWith('anya')) {
-    return '00000000-0000-4000-8000-000000000002';
-  }
-  let hash = 0;
+  let hash1 = 5381;
+  let hash2 = 52711;
   for (let i = 0; i < clean.length; i++) {
-    hash = ((hash << 5) - hash) + clean.charCodeAt(i);
-    hash |= 0;
+    const code = clean.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ code;
+    hash2 = ((hash2 << 5) + hash2) ^ code;
   }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `00000000-0000-4000-8000-${hex.repeat(3).slice(0, 12)}`;
+  const h1 = Math.abs(hash1).toString(16).padStart(8, '0');
+  const h2 = Math.abs(hash2).toString(16).padStart(8, '0');
+  const combined = (h1 + h2).repeat(2);
+  return `${combined.slice(0, 8)}-${combined.slice(8, 12)}-4000-8000-${combined.slice(12, 24)}`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

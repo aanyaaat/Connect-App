@@ -103,7 +103,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }) {
             </div>
             <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
               <Input
-                placeholder="Your name (e.g. Akhil or Aanya)"
+                placeholder="Enter your name..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus

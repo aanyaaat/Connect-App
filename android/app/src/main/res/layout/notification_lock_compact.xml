@@ -43,7 +43,7 @@
         android:id="@+id/notif_subtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Connected with Aanya"
+        android:text="Connected with Partner"
         android:textSize="11sp"
         android:textColor="#B0FFFFFF"
         android:singleLine="true"

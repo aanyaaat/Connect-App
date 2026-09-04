@@ -109,7 +109,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ? connection.user_b
       : connection.user_a
     : null;
-  const partnerName = partnerProfile?.display_name ?? 'Aanya';
+  const partnerName = partnerProfile?.display_name ?? 'Partner';
 
   // ---- online/offline
   useEffect(() => {
@@ -552,7 +552,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const send = useCallback<AppDataState['send']>(
     async (input) => {
       if (!user || !connection || connection.status !== 'accepted') {
-        return { ok: false, offline: false, error: 'Not connected to Aanya yet.' };
+        return { ok: false, offline: false, error: 'Not connected to partner yet.' };
       }
       setSending(true);
       const id = uuid();

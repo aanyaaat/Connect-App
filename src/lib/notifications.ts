@@ -265,7 +265,7 @@ export async function dispatchPushToPartner(partnerId: string, title: string, bo
 export async function showLockScreenArrivalSuggestion(placeName: string, emoji = '📍') {
   await showLocalNotification({
     title: `${emoji} Near ${placeName}?`,
-    body: `Tap below to send a quick arrival update to Aanya directly from your lock screen!`,
+    body: `Tap below to send a quick arrival update to your partner directly from your lock screen!`,
     isActionable: true,
   });
 }
